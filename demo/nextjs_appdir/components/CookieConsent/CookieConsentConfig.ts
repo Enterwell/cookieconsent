@@ -12,7 +12,13 @@ const config: CookieConsentConfig = {
   // revision: 0,
   isTcfCompliant: true,
   tcfComplianceConfig: {
-    disclosedVendorIds: [755, 12, 32, 416]
+    disclosedVendorIds: [755, 12, 32, 416],
+    cmpId: 1_500,
+    cmpVersion: 1,
+    useMockGvl: true,
+    gvlBaseUrl: 'https://jsonplaceholder.typicode.com/todos',
+    gvlDefaultFileName: '1',
+    gvlLanguageFileName: '1'
   },
 
   cookie: {

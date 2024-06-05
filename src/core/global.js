@@ -133,7 +133,7 @@ export class GlobalState {
             autoShow: true,
             lazyHtmlGeneration: true,
             isTcfCompliant: false,
-            tcfComplianceConfig: undefined,
+            tcfComplianceConfig: {},
             //{{END: GUI}}
 
             autoClearCookies: true,
@@ -172,6 +172,13 @@ export class GlobalState {
             * @type {CookieValue}
             */
             _savedCookieContent : {},
+
+            /**
+             * Fetched GVL json data.
+             *
+             * @type {Object}
+             */
+            _gvlJson: {},
 
             /**
              * Mapped GVL data.

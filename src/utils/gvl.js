@@ -1,7 +1,7 @@
 import { globalObj } from '../core/global';
 import { unique } from './general';
 
-export const gvl = {
+export const gvlMockJson = {
     'gvlSpecificationVersion': 3,
     'vendorListVersion': 55,
     'tcfPolicyVersion': 4,
@@ -30823,6 +30823,8 @@ export const gvl = {
  * @param {number[] | undefined} disclosedVendorIds
  */
 export const mapGvlData = (disclosedVendorIds) => {
+    const gvl = globalObj._state._gvlJson;
+
     const vendorsToShow = disclosedVendorIds?.length ? disclosedVendorIds.filter((id) => id in gvl.vendors) : Object.keys(gvl.vendors);
 
     const originalPurposes = gvl.purposes;

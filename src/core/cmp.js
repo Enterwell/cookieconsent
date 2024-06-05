@@ -3,19 +3,10 @@ import { TCModel, TCString, GVL } from '@iabtechlabtcf/core';
 
 import { globalObj } from './global';
 import { validConsent } from './api';
-import { gvl as gvlJson, mapGvlData } from '../utils/gvl';
+import { gvlMockJson, mapGvlData } from '../utils/gvl';
 import { loadCmpApiStub } from './stub';
 
-const CMP_ID = 1_500;
-const CMP_VERSION = 1;
-
-// TODO: Once BE is ready, add this information
-// GVL.baseUrl = ''
-// GVL.latestFilename = '';
-// GVL.languageFilename = ''
-
 /**
- * TODO: Once the BE is ready, maybe put this in a state so you can directly use this in your mapping functions?
  * @type {GVL | undefined}
  */
 let gvl;
@@ -39,12 +30,45 @@ export const configCmpApi = async () => {
         loadCmpApiStub();
     }
 
-    _state._gvlData = mapGvlData(_config.tcfComplianceConfig?.disclosedVendorIds);
+    const {
+        cmpId,
+        cmpVersion,
+        useMockGvl = false,
+        disclosedVendorIds,
+        gvlBaseUrl,
+        gvlDefaultFileName = 'vendor-list.json',
+        gvlLanguageFileName = 'vendor-list-[LANG].json'
+    } = _config.tcfComplianceConfig ?? {};
 
-    // TODO: Loading the local GVL json for now. Once BE is ready, refactor this logic around GVL
-    gvl = new GVL(gvlJson);
+    const currentLanguageCode = _state._currentLanguageCode;
+    let gvlJson;
 
-    cmpApi = new CmpApi(CMP_ID, CMP_VERSION, true);
+    try {
+        // Construct the GVL file name correctly
+        const fileName = currentLanguageCode === 'en' ? gvlDefaultFileName : gvlLanguageFileName.replace('[LANG]', currentLanguageCode);
+
+        const gvlUrl = `${gvlBaseUrl}/${fileName}`;
+
+        if (!useMockGvl) {
+            const gvlResponse = await fetch(gvlUrl);
+            if (!gvlResponse.ok) {
+                throw new Error(`${gvlResponse.status}: ${gvlResponse.statusText}`);
+            }
+
+            gvlJson = await gvlResponse.json();
+        } else {
+            gvlJson = gvlMockJson;
+        }
+
+        _state._gvlJson = gvlJson;
+        _state._gvlData = mapGvlData(disclosedVendorIds);
+  
+        gvl = new GVL(gvlJson);
+    } catch (err) {
+        console.error('An error occurred while loading the GVL:', err);
+    }
+
+    cmpApi = new CmpApi(cmpId, cmpVersion, true);
     _state._isCmpApiLoaded = true;
 
     updateTCString();
@@ -70,14 +94,8 @@ export const updateTCString = () => {
     const tcModel = new TCModel(gvl);
     tcModel.isServiceSpecific = true;
 
-    // TODO: Once BE is ready, refactor this logic GVL promise resolving
-    // tcModel.gvl.readyPromise.then(() => {
-
-    // }).catch(err => {
-
-    // });
-
     const { _savedCookieContent, _gvlData } = globalObj._state;
+    const tcfComplianceConfig = _config.tcfComplianceConfig;
 
     // Set consent data based on the content saved in the cookie
     tcModel.vendorsDisclosed.set(_gvlData.vendorIds);
@@ -89,8 +107,8 @@ export const updateTCString = () => {
     tcModel.useNonStandardTexts = false;
 
     // Set CMP identifiers
-    tcModel.cmpId = CMP_ID;
-    tcModel.cmpVersion = CMP_VERSION;
+    tcModel.cmpId = tcfComplianceConfig.cmpId;
+    tcModel.cmpVersion = tcfComplianceConfig.cmpVersion;
 
     // Encode TCModel to TCString and update the CMP API
     const encodedString = TCString.encode(tcModel);

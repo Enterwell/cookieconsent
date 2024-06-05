@@ -30,6 +30,31 @@ Check out the [Next.js demo application](./demo/nextjs_appdir).
     + https://vendor-list.consensu.org/v3/vendor-list.json
   + *Note: An inappropriately large number of vendors may affect the ability of users to make informed decisions and may increase legal risks for both publishers and vendors.*
 
++ `cmpId: number` - Registered CMP identifier
++ `cmpVersion: number` - CMP version
+
++ `useMockGvl?: boolean`
+  + Flag indicating should the mock GVL be used
+  + default: `false`
+  + *NOTE: This is only for testing purposes, this should never be used!*
+
++ `gvlBaseUrl: string`
+  + GVL's base URL to load the vendor-list.json from
+  + Entities using the vendor-list.json are required by the IAB to host their own copy of it to reduce the load on the IAB's infrastructure so a 'base' url must be set to be put together with the versioning scheme of the filenames
+  + This is broken out from the filename because it follows a different scheme for default english file vs translated files
+  + e.g. `gvlBaseUrl = "https://www.example.com"`
+
++ `gvlDefaultFileName?: string`
+  + GVL's default file name
+  + This is the file name that will be loaded by default for the english locale
+  + default: `"vendor-list.json"`
+
++ `gvlLanguageFileName?: string`
+  + GVL's language file name format
+  + This is the file name that will be loaded for locales other than english
+  + Placeholder `[LANG]` is replaced with the current language code the consent modal is working with
+  + default: `"vendor-list-[LANG].json"`
+
 ### GuiOptions
 + `consentModal?` - by enabling TCF compliance consent modal layout is __fixed__ to `bar-bottom` and these settings are not applied.
 
