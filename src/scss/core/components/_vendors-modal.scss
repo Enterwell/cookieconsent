@@ -520,6 +520,27 @@ $service-toggle-knob-icon-width: 1.7px;
       border-radius: 0;
       max-width: none !important;
     }
+
+    .vm__header,
+    .vm__body,
+    .vm__footer {
+      padding: .9em !important;
+    }
+
+    .vm__footer {
+      flex-direction: column !important;
+
+      .vm__btn-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .vm__btn + .vm__btn,
+      .vm__btn-group + .vm__btn-group {
+        margin: 0;
+        margin-top: $cc-btn-gap;
+      }
+    }
   }
 
   .show--vendors #cc-main .cc--anim .vm {
