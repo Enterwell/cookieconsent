@@ -33,11 +33,6 @@ Check out the [Next.js demo application](./demo/nextjs_appdir).
 + `cmpId: number` - Registered CMP identifier
 + `cmpVersion: number` - CMP version
 
-+ `useMockGvl?: boolean`
-  + Flag indicating should the mock GVL be used
-  + default: `false`
-  + *NOTE: This is only for testing purposes, this should never be used!*
-
 + `gvlBaseUrl: string`
   + GVL's base URL to load the vendor-list.json from
   + Entities using the vendor-list.json are required by the IAB to host their own copy of it to reduce the load on the IAB's infrastructure so a 'base' url must be set to be put together with the versioning scheme of the filenames

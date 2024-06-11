@@ -666,15 +666,6 @@ declare namespace CookieConsent {
       cmpVersion: number;
 
       /**
-       * Flag indicating should the mock GVL be used.
-       *
-       * *NOTE: This is only for testing purposes, this should never be used!*
-       * 
-       * @default false
-       */
-      useMockGvl?: boolean;
-
-      /**
        * GVL's base URL to load the vendor-list.json from.
        *
        * Entities using the vendor-list.json are required by the IAB to host their own copy of it to reduce the load on the IAB's infrastructure

@@ -3,7 +3,7 @@ import { TCModel, TCString, GVL } from '@iabtechlabtcf/core';
 
 import { globalObj } from './global';
 import { validConsent } from './api';
-import { gvlMockJson, mapGvlData } from '../utils/gvl';
+import { mapGvlData } from '../utils/gvl';
 import { loadCmpApiStub } from './stub';
 
 /**
@@ -33,7 +33,6 @@ export const configCmpApi = async () => {
     const {
         cmpId,
         cmpVersion,
-        useMockGvl = false,
         disclosedVendorIds,
         gvlBaseUrl,
         gvlDefaultFileName = 'vendor-list.json',
@@ -41,7 +40,6 @@ export const configCmpApi = async () => {
     } = _config.tcfComplianceConfig ?? {};
 
     const currentLanguageCode = _state._currentLanguageCode;
-    let gvlJson;
 
     try {
         // Construct the GVL file name correctly
@@ -49,16 +47,12 @@ export const configCmpApi = async () => {
 
         const gvlUrl = `${gvlBaseUrl}/${fileName}`;
 
-        if (!useMockGvl) {
-            const gvlResponse = await fetch(gvlUrl);
-            if (!gvlResponse.ok) {
-                throw new Error(`${gvlResponse.status}: ${gvlResponse.statusText}`);
-            }
-
-            gvlJson = await gvlResponse.json();
-        } else {
-            gvlJson = gvlMockJson;
+        const gvlResponse = await fetch(gvlUrl);
+        if (!gvlResponse.ok) {
+            throw new Error(`${gvlResponse.status}: ${gvlResponse.statusText}`);
         }
+
+        const gvlJson = await gvlResponse.json();
 
         _state._gvlJson = gvlJson;
         _state._gvlData = mapGvlData(disclosedVendorIds);
