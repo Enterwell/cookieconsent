@@ -15,6 +15,7 @@ import {
     safeRun
 } from './general';
 import { localStorageManager } from './localstorage';
+import { updateTCString } from '../core/cmp';
 
 /**
  * @param {boolean} [isFirstConsent]
@@ -107,6 +108,8 @@ export const autoclearCookiesHelper = (isFirstConsent) => {
 };
 
 export const saveCookiePreferences = () => {
+    const isTcfCompliant = globalObj._config.isTcfCompliant;
+
     const state = globalObj._state;
 
     /**
@@ -131,6 +134,19 @@ export const saveCookiePreferences = () => {
         if (state._lastChangedServices[categoryName].length > 0)
             servicesWereChanged = true;
     }
+
+    // Determine if purposes, specialFeatures or vendors were changed from last state
+    const purposesFromLastState = state._savedCookieContent.purposeIds ?? [];
+    const specialFeaturesFromLastState = state._savedCookieContent.specialFeatureIds ?? [];
+    const vendorsFromLastState = state._savedCookieContent.vendorIds ?? [];
+
+    state._lastChangedPurposeIds = arrayDiff(purposesFromLastState, state._acceptedPurposeIds);
+    state._lastChangedSpecialFeatureIds = arrayDiff(specialFeaturesFromLastState, state._acceptedSpecialFeatureIds);
+    state._lastChangedVendorIds = arrayDiff(vendorsFromLastState, state._allowedVendorIds);
+
+    const purposesWereChanged = state._lastChangedPurposeIds.length > 0;
+    const specialFeaturesWereChanged = state._lastChangedSpecialFeatureIds.length > 0;
+    const vendorsWereChanged = state._lastChangedVendorIds.length > 0;
 
     //{{START: GUI}}
     const categoryToggles = globalObj._dom._categoryCheckboxInputs;
@@ -166,11 +182,20 @@ export const saveCookiePreferences = () => {
         data: state._cookieData,
         consentTimestamp: state._consentTimestamp.toISOString(),
         consentId: state._consentId,
-        services: deepCopy(state._acceptedServices)
+        services: deepCopy(state._acceptedServices),
+        ...isTcfCompliant && {
+            purposeIds: deepCopy(state._acceptedPurposeIds),
+            specialFeatureIds: deepCopy(state._acceptedSpecialFeatureIds),
+            vendorIds: deepCopy(state._allowedVendorIds)
+        }
     };
 
     let isFirstConsent = false;
-    const stateChanged = categoriesWereChanged || servicesWereChanged;
+    const stateChanged = categoriesWereChanged
+      || servicesWereChanged
+      || purposesWereChanged
+      || specialFeaturesWereChanged
+      || vendorsWereChanged;
 
     if (state._invalidConsent || stateChanged) {
         /**
@@ -196,6 +221,9 @@ export const saveCookiePreferences = () => {
             autoclearCookiesHelper(isFirstConsent);
 
         manageExistingScripts();
+
+        // Update the TC String
+        updateTCString();
     }
 
     if (isFirstConsent) {
@@ -206,8 +234,9 @@ export const saveCookiePreferences = () => {
             return;
     }
 
-    if (stateChanged)
+    if (stateChanged) {
         fireEvent(globalObj._customEvents._onChange);
+    }
 
     /**
      * Reload page if needed

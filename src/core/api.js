@@ -16,6 +16,8 @@ import {
     getActiveElement,
     resolveEnabledCategories,
     resolveEnabledServices,
+    resolvePurposesAndSpecFeaturesToAccept,
+    resolveVendorsToAllow,
     updateModalToggles,
     toggleDisableInteraction,
     fireEvent,
@@ -37,7 +39,8 @@ import {
     createConsentModal,
     createPreferencesModal,
     generateHtml,
-    createMainContainer
+    createMainContainer,
+    createVendorsModal
 } from './modals/index';
 
 import {
@@ -68,12 +71,33 @@ import {
     OPT_OUT_MODE,
     CONSENT_MODAL_NAME,
     ARIA_HIDDEN,
-    PREFERENCES_MODAL_NAME
+    PREFERENCES_MODAL_NAME,
+    TOGGLE_VENDORS_MODAL_CLASS,
+    VENDORS_MODAL_NAME
 } from '../utils/constants';
 import { localStorageManager } from '../utils/localstorage';
+import { configCmpApi } from './cmp';
 
 /**
- * Accept API
+ * Accept multiple API.
+ *
+ * @param {string[]|string} categories - Categories to accept
+ * @param {string[]} [excludedCategories]
+ * @param {'all' | number[]} purposesToAccept
+ * @param {'all' | number[]} specialFeaturesToAccept
+ * @param {'all' | number[]} vendorsToAllow
+ */
+export const acceptMultiple = (categories, excludedCategories = [], purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
+    resolveEnabledCategories(categories, excludedCategories);
+    resolveEnabledServices();
+    resolvePurposesAndSpecFeaturesToAccept(purposesToAccept, specialFeaturesToAccept);
+    resolveVendorsToAllow(vendorsToAllow);
+    saveCookiePreferences();
+};
+
+/**
+ * Accept category API.
+ *
  * @param {string[]|string} categories - Categories to accept
  * @param {string[]} [excludedCategories]
  */
@@ -84,16 +108,65 @@ export const acceptCategory = (categories, excludedCategories = []) => {
 };
 
 /**
- * Returns true if cookie category is accepted
+ * Allow vendors API.
+ *
+ * @param {'all' | number[]} vendorsToAllow
+ */
+export const allowVendors = (vendorsToAllow) => {
+    resolveVendorsToAllow(vendorsToAllow);
+    saveCookiePreferences();
+};
+
+/**
+ * Returns true if cookie category is accepted.
+ *
  * @param {string} category
  */
 export const acceptedCategory = (category) => {
-
     const acceptedCategories = !globalObj._state._invalidConsent
         ? globalObj._state._acceptedCategories
         : [];
 
     return elContains(acceptedCategories, category);
+};
+
+/**
+ * Returns true if purpose is accepted.
+ *
+ * @param {number} purposeId 
+ */
+export const acceptedPurpose = (purposeId) => {
+    const acceptedPurposeIds = !globalObj._state._invalidConsent
+        ? globalObj._state._acceptedPurposeIds
+        : [];
+
+    return elContains(acceptedPurposeIds, purposeId);
+};
+
+/**
+ * Returns true if special feature is accepted.
+ *
+ * @param {number} specialFeatureId 
+ */
+export const acceptedSpecialFeature = (specialFeatureId) => {
+    const acceptedSpecialFeatureIds = !globalObj._state._invalidConsent
+        ? globalObj._state._acceptedSpecialFeatureIds
+        : [];
+
+    return elContains(acceptedSpecialFeatureIds, specialFeatureId);
+};
+
+/**
+ * Returns true if vendor is allowed.
+ *
+ * @param {number} vendorId 
+ */
+export const allowedVendor = (vendorId) => {
+    const allowedVendorIds = !globalObj._state._invalidConsent
+        ? globalObj._state._allowedVendorIds
+        : [];
+
+    return elContains(allowedVendorIds, vendorId);
 };
 
 /**
@@ -200,7 +273,7 @@ export const show = (createModal) => {
     if (_state._disablePageInteraction)
         toggleDisableInteraction(true);
 
-    focusAfterTransition(_dom._cm, 1);
+    focusAfterTransition(_dom._cm, 'consent');
 
     addClass(_dom._htmlDom, TOGGLE_CONSENT_MODAL_CLASS);
     setAttribute(_dom._cm, ARIA_HIDDEN, 'false');
@@ -271,7 +344,7 @@ export const showPreferences = () => {
         state._lastFocusedModalElement = getActiveElement();
     }
 
-    focusAfterTransition(globalObj._dom._pm, 2);
+    focusAfterTransition(globalObj._dom._pm, 'preferences');
 
     addClass(globalObj._dom._htmlDom, TOGGLE_PREFERENCES_MODAL_CLASS);
     setAttribute(globalObj._dom._pm, ARIA_HIDDEN, 'false');
@@ -292,15 +365,23 @@ export const showPreferences = () => {
  * https://github.com/orestbida/cookieconsent/issues/481
  */
 const discardUnsavedPreferences = () => {
+    const dom = globalObj._dom;
+    const state = globalObj._state;
+    const config = globalObj._config;
+
     const consentIsValid = validConsent();
-    const allDefinedCategories = globalObj._state._allDefinedCategories;
-    const categoryInputs = globalObj._dom._categoryCheckboxInputs;
-    const serviceInputs = globalObj._dom._serviceCheckboxInputs;
+
+    const allDefinedCategories = state._allDefinedCategories;
+    const categoryInputs = dom._categoryCheckboxInputs;
+    const serviceInputs = dom._serviceCheckboxInputs;
+    const stackInputs = dom._stackCheckboxInputs;
+    const purposeInputs = dom._purposeCheckboxInputs;
+    const specialFeatureInputs = dom._specialFeatureCheckboxInputs;
 
     /**
      * @param {string} category
      */
-    const categoryEnabledByDefault = (category) => elContains(globalObj._state._defaultEnabledCategories, category);
+    const categoryEnabledByDefault = (category) => elContains(state._defaultEnabledCategories, category);
 
     for (const category in categoryInputs) {
         const isReadOnly = !!allDefinedCategories[category].readOnly;
@@ -315,6 +396,25 @@ const discardUnsavedPreferences = () => {
                 ? acceptedService(service, category)
                 : categoryEnabledByDefault(category)
             );
+        }
+    }
+
+    if (config.isTcfCompliant) {
+        const { originalStacks } = state._gvlData;
+
+        for (const purposeId in purposeInputs) {
+            purposeInputs[purposeId].checked = acceptedPurpose(parseInt(purposeId, 10));
+        }
+  
+        for (const specialFeatureId in specialFeatureInputs) {
+            specialFeatureInputs[specialFeatureId].checked = acceptedSpecialFeature(parseInt(specialFeatureId, 10));
+        }
+  
+        for (const stackId in stackInputs) {
+            const stackPurposeIds = originalStacks[stackId].purposes;
+            const stackSpecialFeatureIds = originalStacks[stackId].specialFeatures;
+  
+            stackInputs[stackId].checked = stackPurposeIds.some((id) => acceptedPurpose(id)) || stackSpecialFeatureIds.some((id) => acceptedSpecialFeature(id));
         }
     }
 };
@@ -359,12 +459,94 @@ export const hidePreferences = () => {
     fireEvent(globalObj._customEvents._onModalHide, PREFERENCES_MODAL_NAME);
 };
 
+/**
+ * Show the vendors modal.
+ */
+export const showVendors = () => {
+    const state = globalObj._state;
+    const dom = globalObj._dom;
+
+    if (state._vendorsModalVisible) return;
+
+    if (!state._vendorsModalExists) {
+        createVendorsModal(miniAPI, createMainContainer);
+    }
+
+    state._vendorsModalVisible = true;
+
+    // If there is no consent-modal, keep track of the last focused elem.
+    if (!state._consentModalVisible) {
+        state._lastFocusedElemBeforeModal = getActiveElement();
+    } else {
+        state._lastFocusedModalElement = getActiveElement();
+    }
+
+    focusAfterTransition(dom._vm, 'vendors');
+
+    addClass(dom._htmlDom, TOGGLE_VENDORS_MODAL_CLASS);
+    setAttribute(dom._vm, ARIA_HIDDEN, false);
+
+    // Set focus to vendorsModal
+    setTimeout(() => focus(dom._vmDivTabIndex), 100);
+
+    debug('CookieConsent [TOGGLE]: show vendorsModal');
+
+    fireEvent(globalObj._customEvents._onModalShow, VENDORS_MODAL_NAME);
+};
+
+/**
+ * Hide the vendors modal.
+ */
+export const hideVendors = () => {
+    const state = globalObj._state;
+    const dom = globalObj._dom;
+
+    if (!state._vendorsModalVisible) return;
+
+    state._vendorsModalVisible = false;
+
+    discardUnsavedVendorsConsent();
+
+    // Fix focus restoration to body with Chrome
+    focus(dom._vmFocusSpan, true);
+
+    removeClass(dom._htmlDom, TOGGLE_VENDORS_MODAL_CLASS);
+    setAttribute(dom._vm, ARIA_HIDDEN, true);
+
+    // If consent modal is visible, focus him (instead of page document)
+    if(state._consentModalVisible) {
+        focus(state._lastFocusedModalElement);
+        state._lastFocusedModalElement = null;
+    } else {
+        // Restore focus to last page element which had focus before modal opening
+        focus(state._lastFocusedElemBeforeModal);
+        state._lastFocusedElemBeforeModal = null;
+    }
+
+    debug('CookieConsent [TOGGLE]: hide vendorsModal');
+
+    fireEvent(globalObj._customEvents._onModalHide, VENDORS_MODAL_NAME);
+};
+
+/**
+ * Discard unsaved vendors consent.
+ */
+const discardUnsavedVendorsConsent = () => {
+    const vendorInputs = globalObj._dom._vendorCheckboxInputs;
+
+    for (const vendorId in vendorInputs) {
+        vendorInputs[vendorId].checked = allowedVendor(parseInt(vendorId, 10));
+    }
+};
+
 var miniAPI = {
     show,
     hide,
     showPreferences,
     hidePreferences,
-    acceptCategory
+    showVendors,
+    hideVendors,
+    acceptMultiple
 };
 
 /**
@@ -396,6 +578,9 @@ export const setLanguage = async (newLanguageCode, forceUpdate) => {
 
         if (state._preferencesModalExists)
             createPreferencesModal(miniAPI, createMainContainer);
+
+        if (state._vendorsModalExists)
+            createVendorsModal(miniAPI, createMainContainer);
 
         handleRtlLanguage();
 
@@ -560,6 +745,9 @@ const retrieveState = () => {
     const {
         categories,
         services,
+        purposeIds,
+        specialFeatureIds,
+        vendorIds,
         consentId,
         consentTimestamp,
         lastConsentTimestamp,
@@ -568,6 +756,9 @@ const retrieveState = () => {
     } = cookieValue;
 
     const validCategories = isArray(categories);
+    const validPurposeIds = isArray(purposeIds);
+    const validSpecialFeatureIds = isArray(specialFeatureIds);
+    const validVendorIds = isArray(vendorIds);
 
     state._savedCookieContent = cookieValue;
     state._consentId = consentId;
@@ -592,11 +783,23 @@ const retrieveState = () => {
     if (state._revisionEnabled && validConsentId && revision !== config.revision)
         state._validRevision = false;
 
-    state._invalidConsent = !validConsentId
-        || !state._validRevision
-        || !state._consentTimestamp
-        || !state._lastConsentTimestamp
-        || !validCategories;
+    // There are different meanings of valid consent based on if the consent should be TCF compliant or not
+    if (config.isTcfCompliant) {
+        state._invalidConsent = !validConsentId
+          || !state._validRevision
+          || !state._consentTimestamp
+          || !state._lastConsentTimestamp
+          || !validCategories
+          || !validPurposeIds
+          || !validSpecialFeatureIds
+          || !validVendorIds;
+    } else {
+        state._invalidConsent = !validConsentId
+          || !state._validRevision
+          || !state._consentTimestamp
+          || !state._lastConsentTimestamp
+          || !validCategories;
+    }
 
     /**
      * If localStorage is enabled, also check the stored `expirationTime`
@@ -620,6 +823,12 @@ const retrieveState = () => {
             ...state._acceptedServices,
             ...services
         };
+
+        if (config.isTcfCompliant) {
+            state._acceptedPurposeIds = purposeIds;
+            state._acceptedSpecialFeatureIds = specialFeatureIds;
+            state._allowedVendorIds = vendorIds;
+        }
 
         setAcceptedCategories([
             ...state._readOnlyCategories,
@@ -656,6 +865,9 @@ export const run = async (userConfig) => {
             return;
 
         retrieveState(userConfig);
+
+        // Configure the CMP API once the state is retrieved
+        await configCmpApi();
 
         const consentIsValid = validConsent();
 
@@ -716,6 +928,7 @@ export const reset = (deleteCookie) => {
      */
     _htmlDom && _htmlDom.classList.remove(
         TOGGLE_DISABLE_INTERACTION_CLASS,
+        TOGGLE_VENDORS_MODAL_CLASS,
         TOGGLE_PREFERENCES_MODAL_CLASS,
         TOGGLE_CONSENT_MODAL_CLASS
     );

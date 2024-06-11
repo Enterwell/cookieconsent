@@ -4,7 +4,8 @@ import { OPT_OUT_MODE } from '../utils/constants';
 import { resolveCurrentLanguageCode, setCurrentLanguageCode } from '../utils/language';
 
 /**
- * Configure CookieConsent
+ * Configure CookieConsent.
+ * 
  * @param {import("./global").UserConfig} userConfig
  */
 export const setConfig = (userConfig) => {
@@ -42,6 +43,11 @@ export const setConfig = (userConfig) => {
     //{{START: GUI}}
     state._allTranslations = userConfig.language.translations;
     state._disablePageInteraction = !!userConfig.disablePageInteraction;
+
+    // If the modal should be TCF compliant, page interaction needs to be disabled until the user makes a choice
+    if (userConfig.isTcfCompliant) {
+        state._disablePageInteraction = true;
+    }
     //{{END: GUI}}
 
     /**
@@ -62,6 +68,8 @@ export const setConfig = (userConfig) => {
         //{{START: GUI}}
         autoShow,
         lazyHtmlGeneration,
+        isTcfCompliant,
+        tcfComplianceConfig,
         //{{END: GUI}}
         autoClearCookies,
         revision,
@@ -88,8 +96,17 @@ export const setConfig = (userConfig) => {
     if (typeof autoShow === 'boolean')
         config.autoShow = autoShow;
 
-    if (typeof lazyHtmlGeneration === 'boolean')
+    if (typeof isTcfCompliant === 'boolean') {
+        config.isTcfCompliant = isTcfCompliant;
+    }
+
+    if (typeof tcfComplianceConfig === 'object') {
+        config.tcfComplianceConfig = tcfComplianceConfig;
+    }
+
+    if (typeof lazyHtmlGeneration === 'boolean') {
         config.lazyHtmlGeneration = lazyHtmlGeneration;
+    }
 
     //{{END: GUI}}
 
@@ -106,6 +123,8 @@ export const setConfig = (userConfig) => {
     debug('CookieConsent [CONFIG]: autoClearCookies:', config.autoClearCookies);
     debug('CookieConsent [CONFIG]: revision enabled:', state._revisionEnabled);
     debug('CookieConsent [CONFIG]: manageScriptTags:', config.manageScriptTags);
+    debug('CookieConsent [CONFIG]: isTcfCompliant:', config.isTcfCompliant);
+    debug('CookieConsent [CONFIG]: tcfComplianceConfig:', config.tcfComplianceConfig);
 
     fetchCategoriesAndServices(allCategoryNames);
     retrieveScriptElements();

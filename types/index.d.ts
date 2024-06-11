@@ -2,7 +2,6 @@ export = CookieConsent
 export as namespace CookieConsent
 
 declare namespace CookieConsent {
-
     type AcceptType =
         'all'
         | 'custom'
@@ -38,7 +37,11 @@ declare namespace CookieConsent {
 
     type PreferencesModalPosition = 'left' | 'right'
 
-    type ModalName = 'consentModal' | 'preferencesModal'
+    type VendorsModalLayout = 'box' | 'bar'
+
+    type VendorsModalPosition = 'left' | 'right'
+
+    type ModalName = 'consentModal' | 'preferencesModal' | 'vendorsModal'
 
     /**
      * Cookie to clear
@@ -181,6 +184,21 @@ declare namespace CookieConsent {
         services: {[key: string]: string[]}
 
         /**
+         * Accepted purpose IDs.
+         */
+        purposeIds: number[];
+
+        /**
+         * Accepted special feature IDs.
+         */
+        specialFeatureIds: number[];
+
+        /**
+         * Allowed vendor IDs.
+         */
+        vendorIds: number[];
+
+        /**
          * Expiration time of the cookie (in case localstorage is used)
          */
         expirationTime: number
@@ -231,6 +249,11 @@ declare namespace CookieConsent {
     }
 
     interface GuiOptions {
+        /**
+         * Configuration object for tweaking the consent modal UI. 
+         * 
+         * *Note: By enabling TCF compliance consent modal layout is fixed to bar-bottom and these settings will not be applied.*
+         */
         consentModal?: {
             /**
              * Change consentModal layout.
@@ -258,8 +281,10 @@ declare namespace CookieConsent {
              */
             equalWeightButtons?: boolean
         }
+        /**
+         * Configuration object for tweaking the preferences modal UI.
+         */
         preferencesModal?: {
-
             /**
              * Change preferencesModal layout.
              */
@@ -283,10 +308,23 @@ declare namespace CookieConsent {
              */
             equalWeightButtons?: boolean
         }
+        /**
+         * Configuration object for tweaking the vendors modal UI.
+         */
+        vendorsModal?: {
+            /**
+             * Change vendorsModal layout.
+             */
+            layout?: VendorsModalLayout
+
+            /**
+             * This options is valid only if layout=bar.
+             */
+            position?: VendorsModalPosition
+        }
     }
 
     interface ConsentModalOptions {
-
         /**
          * Accessibility label. Especially useful if no title is provided.
          */
@@ -294,9 +332,36 @@ declare namespace CookieConsent {
 
         title?: string
         description?: string
+        /**
+         * Specifies what is the vendor count placeholder in the description text that should be replaced with the
+         * appropriate count.
+         * 
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         * 
+         * @default "{{count}}"
+         */
+        descriptionCountPlaceholder?: string;
         acceptAllBtn?: string
         acceptNecessaryBtn?: string
         showPreferencesBtn?: string
+
+        /**
+         * Set the title displayed above the vendors section in the consent modal.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         *
+         * @default "We and our partners perform the following based on your settings"
+         */
+        vendorTitle?: string;
+
+        /**
+         * Set the label for a vendors button.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         * 
+         * @default "List of partners (vendors)"
+         */
+        showVendorsBtn?: string;
 
         /**
          * Specify to generate a big "X" (accept necessary) button. Visible in the `box` layout only.
@@ -371,12 +436,268 @@ declare namespace CookieConsent {
          */
         serviceCounterLabel?: string
 
-        sections: Section[]
+        sections: Section[];
+
+        /**
+         * Set the label text that will be shown under the purpose title communicating to the user how many vendors can use the
+         * specific purpose.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         *
+         * @default "{{count}} partners can use this purpose"
+         */
+        purposeVendorCountLabel?: string
+
+        /**
+         * Specifies what is the vendor count placeholder in the `purposeVendorCountLabel` that should be replaced with the
+         * appropriate count.
+         * 
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         * 
+         * @default "{{count}}"
+         */
+        purposeVendorCountPlaceholder?: string;
+
+        /**
+         * Label for the view vendors list link.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         *
+         * @default "List of IAB Vendors"
+         */
+        viewVendorsLabel?: string;
+
+        /**
+         * Label for the view illustrations link.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         *
+         * @default "View Illustrations"
+         */
+        viewIllustrationsLabel?: string;
+
+        /**
+         * Set the illustrations modal title.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         *
+         * @default "Illustrations"
+         */
+        illustrationsTitle?: string;
+    }
+
+    interface VendorsModalOptions {
+      /**
+       * Set the vendors modal title.
+       *
+       * @default "IAB Vendors List"
+       */
+      title?: string;
+
+      /**
+       * Accessibility label for the close icon.
+       */
+      closeIconLabel?: string;
+
+      /**
+       * Accessibility label for the back icon.
+       */
+      backIconLabel?: string;
+
+      /**
+       * Label for the button allowing all vendor consents.
+       * 
+       * @default "Allow all"
+       */
+      allowAllConsentBtn?: string;
+
+      /**
+       * Label for the button denying all vendor consents.
+       *
+       * @default "Deny all"
+       */
+      denyAllConsentBtn?: string;
+
+      /**
+       * Label for the button allowing selected vendor consents.
+       *
+       * @default "Allow current selection"
+       */
+      allowSelectionBtn?: string;
+
+      /**
+       * Label for the vendor privacy policy link.
+       *
+       * @default "View Privacy Policy"
+       */
+      viewPrivacyPolicyLabel?: string;
+
+      /**
+       * Label for the vendor view legitimate interest claim link.
+       *
+       * @default "View Legitimate Interest Claim"
+       */
+      viewLegitimateInterestClaimLabel?: string;
+
+      /**
+       * Label for the vendor view device storage disclosure link.
+       *
+       * @default "View Device Storage Disclosure"
+       */
+      viewDeviceStorageDisclosureLabel?: string;
+
+      /**
+       * Label for the cookie lifespan header in the information list.
+       *
+       * @default "Cookie Lifespan"
+       */
+      cookieLifespanLabel?: string;
+
+      /**
+       * Translation label for the cookie lifespan information.
+       *
+       * @default "Months"
+       */
+      cookieLifespanMonthsLabel?: string;
+
+      /**
+       * Label if the vendor uses other methods of storage in addition to cookies.
+       *
+       * @default "This vendor utilizes other methods of storage or accessing information in addition to cookies"
+       */
+      usesNonCookieAccessLabel?: string;
+
+      /**
+       * Label for the data declaration header in the information list.
+       *
+       * @default "Data Declaration"
+       */
+      dataDeclarationLabel?: string;
+
+      /**
+       * Label for the data retention header in the information list.
+       *
+       * @default "Data Retention"
+       */
+      dataRetentionLabel?: string;
+
+      /**
+       * Label for the standard data retention information.
+       *
+       * @default "Standard Retention"
+       */
+      standardRetentionLabel?: string;
+
+      /**
+       * Translation label for the data retention days information.
+       *
+       * @default "Days"
+       */
+      dataRetentionDaysLabel?: string;
+
+      /**
+       * Label for the consent purposes header in the information list.
+       *
+       * @default "Consent Purposes"
+       */
+      consentPurposesLabel?: string;
+
+      /**
+       * Label for the legitimate interest purposes header in the information list.
+       *
+       * @default "Legitimate Interest Purposes"
+       */
+      legitimateInterestPurposesLabel?: string;
+
+      /**
+       * Label for the special purposes header in the information list.
+       *
+       * @default "Special Purposes"
+       */
+      specialPurposesLabel?: string;
+
+      /**
+       * Label for the features header in the information list.
+       *
+       * @default "Features"
+       */
+      featuresLabel?: string;
+
+      /**
+       * Label for the special features header in the information list.
+       *
+       * @default "Special Features"
+       */
+      specialFeaturesLabel?: string;
     }
 
     interface Translation {
-        consentModal: ConsentModalOptions
-        preferencesModal: PreferencesModalOptions
+        consentModal: ConsentModalOptions;
+        preferencesModal: PreferencesModalOptions;
+
+        /**
+         * Translation information for vendors modal.
+         *
+         * *NOTE: Only used if the `isTcfCompliant` is set to `true`.*
+         */
+        vendorsModal?: VendorsModalOptions;
+    }
+
+    interface TcfComplianceConfig {
+      /**
+       * Number IDs of disclosed third party vendors you work with.
+       * 
+       * Leaving this undefined or empty will disclose all possible vendors registered in the IAB TCF.
+       * https://vendor-list.consensu.org/v3/vendor-list.json
+       * 
+       * *Note: An inappropriately large number of vendors may affect the ability of users to make informed decisions and
+       * may increase legal risks for both publishers and vendors.*
+       */
+      disclosedVendorIds?: number[];
+
+      /**
+       * Identifier of the registered CMP.
+       */
+      cmpId: number;
+
+      /**
+       * CMP version.
+       */
+      cmpVersion: number;
+
+      /**
+       * GVL's base URL to load the vendor-list.json from.
+       *
+       * Entities using the vendor-list.json are required by the IAB to host their own copy of it to reduce the load on the IAB's infrastructure
+       * so a 'base' url must be set to be put together with the versioning scheme of the filenames.
+       *
+       * This is broken out from the filename because it follows a different scheme for default english file vs translated files.
+       * 
+       * e.g.
+       *
+       * gvlBaseUrl = "https://www.example.com"
+       */
+      gvlBaseUrl: string;
+
+      /**
+       * GVL's default file name.
+       *
+       * This is the file name that will be loaded by default for the english locale.
+       * 
+       * @default "vendor-list.json"
+       */
+      gvlDefaultFileName?: string;
+
+      /**
+       * GVL's language file name format.
+       *
+       * This is the file name that will be loaded for locales other than english.
+       *
+       * Placeholder `[LANG]` is replaced with the current language code the consent modal is working with.
+       * 
+       * @default "vendor-list-[LANG].json"
+       */
+      gvlLanguageFileName?: string;
     }
 
     interface CookieConsentConfig {
@@ -393,6 +714,20 @@ declare namespace CookieConsent {
          * @default 'opt-in'
          */
         mode?: 'opt-in' | 'opt-out'
+
+        /**
+         * Should the consent modal be TCF compliant and use the `tcfComplianceConfig` for more detailed configuration.
+         * 
+         * *Note: By enabling TCF compliance the `disablePageInteraction` config value is set to `true` and consent modal layout is fixed to bar-bottom.*
+         *
+         * @default false
+         */
+        isTcfCompliant?: boolean;
+
+        /**
+         * Detailed configuration to use if the `isTcfCompliant` configuration option is set to `true`.
+         */
+        tcfComplianceConfig?: TcfComplianceConfig;
 
         /**
          * Automatically show the consentModal if consent is not valid.
@@ -445,7 +780,7 @@ declare namespace CookieConsent {
 
         /**
          * Generates the modals on the fly
-         * and only if needed
+         * and only if needed.
          *
          * @default true
          */
@@ -472,12 +807,15 @@ declare namespace CookieConsent {
         }) => void
 
         /**
-         * Callback fired when categories or services are changed.
+         * Callback fired when categories, services or TCF data has changed.
          */
         onChange?: (param: {
             cookie: CookieValue
             changedCategories: string[],
-            changedServices: {[key: string]: string[]}
+            changedServices: {[key: string]: string[]},
+            changedPurposeIds?: number[],
+            changedSpecialFeatureIds?: number[],
+            changedVendorIds?: number[]
         }) => void
 
         /**
@@ -537,7 +875,6 @@ declare namespace CookieConsent {
         }
     }
 
-
     /**
      * Configure and run the plugin.
      */
@@ -566,11 +903,40 @@ declare namespace CookieConsent {
     function hidePreferences(): void
 
     /**
+     * Shows the vendors modal.
+     */
+    function showVendors(): void;
+
+    /**
+     * Hides the vendors modal.
+     */
+    function hideVendors(): void;
+
+    /**
+     * Accept/Reject multiple.
+     *
+     * @param categories Categories to accept
+     * @param excludedCategories Categories to exclude
+     * @param purposesToAccept Purposes to accept
+     * @param specialFeaturesToAccept Special features to accept
+     * @param vendorsToAllow Vendors to allow
+     */
+    function acceptMultiple(categories: string | string[], excludedCategories?: string[], purposesToAccept?: 'all' | number[], specialFeaturesToAccept?: 'all' | number[], vendorsToAllow?: 'all' | number[]): void
+
+    /**
      * Accept/Reject categories.
+     *
      * @param categories Categories to accept
      * @param excludedCategories Categories to exclude
      */
     function acceptCategory(categories: string | string[], excludedCategories?: string[]): void
+
+    /**
+     * Allow / Deny vendors.
+     *
+     * @param vendorsToAllow Vendors to allow or an 'all' keyword to allow all disclosed
+     */
+    function allowVendors(vendorsToAllow: 'all' | number[]): void;
 
     /**
      * Accept/Reject services.
@@ -587,6 +953,30 @@ declare namespace CookieConsent {
     function acceptedCategory(categoryName: string): boolean
 
     /**
+     * Returns true if purpose is accepted, otherwise false.
+     *
+     * @param purposeId Identifier of the purpose
+     * @returns True if the purpose is accepted
+     */
+    function acceptedPurpose(purposeId: number): boolean
+
+    /**
+     * Returns true if special feature is accepted, otherwise false.
+     *
+     * @param specialFeatureId Identifier of the special feature
+     * @returns True if the special feature is accepted
+     */
+    function acceptedSpecialFeature(specialFeatureId: number): boolean
+
+    /**
+     * Returns true if vendor is allowed, otherwise false.
+     *
+     * @param vendorId Identifier of the vendor
+     * @returns True if the vendor if allowed
+     */
+    function allowedVendor(vendorId: number): boolean
+
+    /**
      * Check if the service in the specified category is accepted.
      * @param serviceName Name of the service
      * @param categoryName Name of the category
@@ -596,6 +986,7 @@ declare namespace CookieConsent {
 
     /**
      * Returns true if consent is valid, otherwise false.
+     *
      * @returns boolean: true if category is accepted
      */
     function validConsent(): boolean
@@ -672,6 +1063,7 @@ declare namespace CookieConsent {
 
     /**
      * Reset cookieconsent.
+     *
      * @param eraseCookie delete plugin's cookie
      */
     function reset(eraseCookie?: boolean): void

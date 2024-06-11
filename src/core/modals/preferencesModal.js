@@ -16,7 +16,10 @@ import {
     fireEvent,
     getSvgIcon,
     handleFocusTrap,
-    debug
+    debug,
+    replaceChild,
+    focus,
+    getElementById
 } from '../../utils/general';
 
 import { guiManager } from '../../utils/gui-manager';
@@ -28,8 +31,15 @@ import {
     BUTTON_TAG,
     BTN_GROUP_CLASS,
     CLICK_EVENT,
-    DATA_ROLE
+    DATA_ROLE,
+    H2_TAG,
+    SPAN_TAG,
+    H3_TAG
 } from '../../utils/constants';
+import { generateVendorPreferenceModalData } from '../../utils/gvl';
+import { replaceTextSpacesWithSymbol } from '../../utils/text';
+import { createVendorsModal } from './vendorsModal';
+import { acceptedPurpose, acceptedSpecialFeature } from '../api';
 
 /**
  * @callback CreateMainContainer
@@ -37,19 +47,30 @@ import {
 
 /**
  * Generates preferences modal and appends it to "cc-main" el.
+ *
  * @param {import("../global").Api} api
  * @param {CreateMainContainer} createMainContainer
  */
 export const createPreferencesModal = (api, createMainContainer) => {
+    const config = globalObj._config;
     const state = globalObj._state;
     const dom = globalObj._dom;
-    const {hide, hidePreferences, acceptCategory} = api;
+    const {
+        hide,
+        hidePreferences,
+        acceptMultiple
+    } = api;
+
+    const isTcfCompliant = config.isTcfCompliant;
 
     /**
      * @param {string|string[]} [categories]
+     * @param {'all' | number[]} purposesToAccept
+     * @param {'all' | number[]} specialFeaturesToAccept
+     * @param {'all' | number[]} vendorsToAllow
      */
-    const acceptHelper = (categories) => {
-        acceptCategory(categories);
+    const acceptAndHide = (categories, purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
+        acceptMultiple(categories, [], purposesToAccept, specialFeaturesToAccept, vendorsToAllow);
         hidePreferences();
         hide();
     };
@@ -57,33 +78,32 @@ export const createPreferencesModal = (api, createMainContainer) => {
     /**
      * @type {import("../global").PreferencesModalOptions}
      */
-    const modalData = state._currentTranslation && state._currentTranslation.preferencesModal;
+    const modalData = state._currentTranslation && state._currentTranslation?.preferencesModal;
 
     if (!modalData)
         return;
 
-    const
-        titleData = modalData.title,
-        closeIconLabelData = modalData.closeIconLabel,
-        acceptAllBtnData = modalData.acceptAllBtn,
-        acceptNecessaryBtnData = modalData.acceptNecessaryBtn,
-        savePreferencesBtnData = modalData.savePreferencesBtn,
-        sectionsData = modalData.sections || [],
-        createFooter = acceptAllBtnData
-            || acceptNecessaryBtnData
-            || savePreferencesBtnData;
+    const {
+        title,
+        closeIconLabel = '',
+        acceptAllBtn,
+        acceptNecessaryBtn,
+        savePreferencesBtn,
+        sections = []
+    } = modalData;
 
+    const createFooter = acceptAllBtn || acceptAllBtn || savePreferencesBtn;
+
+    // Create modal if it doesn't exist
     if (!dom._pmContainer) {
         dom._pmContainer = createNode(DIV_TAG);
         addClass(dom._pmContainer, 'pm-wrapper');
 
-        const pmOverlay = createNode('div');
+        const pmOverlay = createNode(DIV_TAG);
         addClass(pmOverlay, 'pm-overlay');
         appendChild(dom._pmContainer, pmOverlay);
 
-        /**
-         * Hide modal when overlay is clicked
-         */
+        // Hide modal when overlay / backdrop is clicked
         addEvent(pmOverlay, CLICK_EVENT, hidePreferences);
 
         // Preferences modal
@@ -104,28 +124,25 @@ export const createPreferencesModal = (api, createMainContainer) => {
         dom._pmHeader = createNode(DIV_TAG);
         addClassPm(dom._pmHeader, 'header');
 
-        dom._pmTitle = createNode('h2');
+        dom._pmTitle = createNode(H2_TAG);
         addClassPm(dom._pmTitle, 'title');
         dom._pmTitle.id = 'pm__title';
 
         dom._pmCloseBtn = createNode(BUTTON_TAG);
         addClassPm(dom._pmCloseBtn, 'close-btn');
-        setAttribute(dom._pmCloseBtn, 'aria-label', modalData.closeIconLabel || '');
+        setAttribute(dom._pmCloseBtn, 'aria-label', closeIconLabel);
         addEvent(dom._pmCloseBtn, CLICK_EVENT, hidePreferences);
-
-        dom._pmFocusSpan = createNode('span');
-        dom._pmFocusSpan.innerHTML = getSvgIcon();
+        
+        dom._pmFocusSpan = createNode(SPAN_TAG);
+        dom._pmFocusSpan.innerHTML = getSvgIcon('x');
         appendChild(dom._pmCloseBtn, dom._pmFocusSpan);
-
+        
         dom._pmBody = createNode(DIV_TAG);
         addClassPm(dom._pmBody, 'body');
-
+        
         dom._pmFooter = createNode(DIV_TAG);
         addClassPm(dom._pmFooter, 'footer');
-
-        var _pmBtnContainer = createNode(DIV_TAG);
-        addClass(_pmBtnContainer, 'btns');
-
+        
         var _pmBtnGroup1 = createNode(DIV_TAG);
         var _pmBtnGroup2 = createNode(DIV_TAG);
         addClassPm(_pmBtnGroup1, BTN_GROUP_CLASS);
@@ -136,11 +153,11 @@ export const createPreferencesModal = (api, createMainContainer) => {
 
         appendChild(dom._pmHeader, dom._pmTitle);
         appendChild(dom._pmHeader, dom._pmCloseBtn);
-
+        
         dom._pmDivTabindex = createNode(DIV_TAG);
         setAttribute(dom._pmDivTabindex, 'tabIndex', -1);
         appendChild(dom._pm, dom._pmDivTabindex);
-
+        
         appendChild(dom._pm, dom._pmHeader);
         appendChild(dom._pm, dom._pmBody);
 
@@ -152,14 +169,12 @@ export const createPreferencesModal = (api, createMainContainer) => {
         addClassPm(dom._pmNewBody, 'body');
     }
 
-    if (titleData) {
-        dom._pmTitle.innerHTML = titleData;
-        closeIconLabelData && setAttribute(dom._pmCloseBtn, 'aria-label', closeIconLabelData);
+    if (title) {
+        dom._pmTitle.innerHTML = title;
+        setAttribute(dom._pmCloseBtn, 'aria-label', closeIconLabel);
     }
 
-    let sectionToggleContainer;
-
-    sectionsData.forEach((section, sectionIndex) => {
+    sections.forEach((section, sectionIndex) => {
         const
             sTitleData = section.title,
             sDescriptionData = section.description,
@@ -177,7 +192,6 @@ export const createPreferencesModal = (api, createMainContainer) => {
             sServices = hasToggle && state._allDefinedServices[sLinkedCategory],
             sServiceNames = isObject(sServices) && getKeys(sServices) || [],
             sIsExpandableToggle = hasToggle && (!!sDescriptionData || !!sCreateCookieTable || getKeys(sServices).length>0);
-
 
         // section
         var s = createNode(DIV_TAG);
@@ -242,8 +256,8 @@ export const createPreferencesModal = (api, createMainContainer) => {
                 /**
                  * Arrow icon span
                  */
-                const sTitleIcon = createNode('span');
-                sTitleIcon.innerHTML = getSvgIcon(2, 3.5);
+                const sTitleIcon = createNode(SPAN_TAG);
+                sTitleIcon.innerHTML = getSvgIcon('arrow', 3.5);
                 addClassPm(sTitleIcon, 'section-arrow');
                 appendChild(sTitleContainer, sTitleIcon);
 
@@ -323,7 +337,6 @@ export const createPreferencesModal = (api, createMainContainer) => {
                     }
                 });
             })(sDescContainer, s, sTitle);
-
 
             if (sCreateCookieTable) {
                 const table = createNode('table');
@@ -407,48 +420,116 @@ export const createPreferencesModal = (api, createMainContainer) => {
         const currentBody = dom._pmNewBody || dom._pmBody;
 
         if (hasToggle) {
-            if (!sectionToggleContainer) {
-                sectionToggleContainer = createNode(DIV_TAG);
-                addClassPm(sectionToggleContainer, 'section-toggles');
+            if (!dom._pmSectionToggleContainer) {
+                dom._pmSectionToggleContainer = createNode(DIV_TAG);
+                addClassPm(dom._pmSectionToggleContainer, 'section-toggles');
             }
-            sectionToggleContainer.appendChild(s);
+
+            dom._pmSectionToggleContainer.appendChild(s);
+
+            appendChild(currentBody, dom._pmSectionToggleContainer);
         } else {
-            sectionToggleContainer = null;
+            appendChild(currentBody, s);
         }
-
-        appendChild(currentBody, sectionToggleContainer || s);
-
     });
 
-    if (acceptAllBtnData) {
+    // If the modal is TCF compliant, show the disclosed vendor purposes
+    if (isTcfCompliant) {
+        const {
+            purposeIdsToShow,
+            purposes,
+            specialFeatureIdsToShow,
+            specialFeatures,
+            stacksToShow,
+            specialPurposes,
+            features
+        } = generateVendorPreferenceModalData();
+
+        // Step 1: Show purposes that did not fit in any stack
+        for (const purposeId of purposeIdsToShow) {
+            const {
+                data,
+                count
+            } = purposes[purposeId];
+  
+            const purposeToggle = createPurposeToggleContainer(data, count, false, modalData, api, createMainContainer);
+            appendChild(dom._pmSectionToggleContainer, purposeToggle);
+        }
+
+        // Step 2: Show special features that did not fit in any stack
+        for (const specFeatureId of specialFeatureIdsToShow) {
+            const {
+                data,
+                count
+            } = specialFeatures[specFeatureId];
+  
+            const purposeToggle = createPurposeToggleContainer(data, count, false, modalData, api, createMainContainer, true);
+            appendChild(dom._pmSectionToggleContainer, purposeToggle);
+        }
+
+        // Step 3: Show stacks used
+        for (const stack of stacksToShow) {
+            const {
+                data,
+                count
+            } = stack;
+  
+            const purposeToggle = createPurposeToggleContainer(data, count, false, modalData, api, createMainContainer);
+            appendChild(dom._pmSectionToggleContainer, purposeToggle);
+        }
+
+        // Step 4: Show special purposes as readonly (user has no choice)
+        for (const specialPurpose of specialPurposes) {
+            const {
+                data,
+                count
+            } = specialPurpose;
+  
+            const purposeToggle = createPurposeToggleContainer(data, count, true, modalData, api, createMainContainer);
+            appendChild(dom._pmSectionToggleContainer, purposeToggle);
+        }
+
+        // Step 5: Show features as readonly (user has no choice)
+        for (const feature of features) {
+            const {
+                data,
+                count
+            } = feature;
+  
+            const purposeToggle = createPurposeToggleContainer(data, count, true, modalData, api, createMainContainer);
+            appendChild(dom._pmSectionToggleContainer, purposeToggle);
+        }
+    }
+
+    if (acceptAllBtn) {
         if (!dom._pmAcceptAllBtn) {
             dom._pmAcceptAllBtn = createNode(BUTTON_TAG);
             addClassPm(dom._pmAcceptAllBtn, 'btn');
             setAttribute(dom._pmAcceptAllBtn, DATA_ROLE, 'all');
             appendChild(_pmBtnGroup1, dom._pmAcceptAllBtn);
             addEvent(dom._pmAcceptAllBtn, CLICK_EVENT, () =>
-                acceptHelper('all')
+                acceptAndHide('all')
             );
         }
 
-        dom._pmAcceptAllBtn.innerHTML = acceptAllBtnData;
+        dom._pmAcceptAllBtn.innerHTML = acceptAllBtn;
     }
 
-    if (acceptNecessaryBtnData) {
+    if (acceptNecessaryBtn) {
         if (!dom._pmAcceptNecessaryBtn) {
             dom._pmAcceptNecessaryBtn = createNode(BUTTON_TAG);
             addClassPm(dom._pmAcceptNecessaryBtn, 'btn');
             setAttribute(dom._pmAcceptNecessaryBtn, DATA_ROLE, 'necessary');
             appendChild(_pmBtnGroup1, dom._pmAcceptNecessaryBtn);
             addEvent(dom._pmAcceptNecessaryBtn, CLICK_EVENT, () =>
-                acceptHelper([])
+                acceptAndHide([], [], [], [])
             );
         }
 
-        dom._pmAcceptNecessaryBtn.innerHTML = acceptNecessaryBtnData;
+        dom._pmAcceptNecessaryBtn.innerHTML = acceptNecessaryBtn;
     }
 
-    if (savePreferencesBtnData) {
+    if (savePreferencesBtn) {
         if (!dom._pmSavePreferencesBtn) {
             dom._pmSavePreferencesBtn = createNode(BUTTON_TAG);
             addClassPm(dom._pmSavePreferencesBtn, 'btn');
@@ -456,12 +537,20 @@ export const createPreferencesModal = (api, createMainContainer) => {
             setAttribute(dom._pmSavePreferencesBtn, DATA_ROLE, 'save');
             appendChild(_pmBtnGroup2, dom._pmSavePreferencesBtn);
 
-            addEvent(dom._pmSavePreferencesBtn, CLICK_EVENT, () =>
-                acceptHelper()
-            );
+            addEvent(dom._pmSavePreferencesBtn, CLICK_EVENT, () => {
+                const checkedPurposeIds = Object.keys(dom._purposeCheckboxInputs)
+                    .filter((id) => dom._purposeCheckboxInputs[id].checked)
+                    .map((id) => parseInt(id, 10));
+
+                const checkedSpecialFeatureIds = Object.keys(dom._specialFeatureCheckboxInputs)
+                    .filter((id) => dom._specialFeatureCheckboxInputs[id].checked)
+                    .map((id) => parseInt(id, 10));
+
+                acceptAndHide(undefined, checkedPurposeIds, checkedSpecialFeatureIds, []);
+            });
         }
 
-        dom._pmSavePreferencesBtn.innerHTML = savePreferencesBtnData;
+        dom._pmSavePreferencesBtn.innerHTML = savePreferencesBtn;
     }
 
     if (dom._pmNewBody) {
@@ -469,7 +558,8 @@ export const createPreferencesModal = (api, createMainContainer) => {
         dom._pmBody = dom._pmNewBody;
     }
 
-    guiManager(1);
+    // Set the modal's layout
+    guiManager('preferences');
 
     if (!state._preferencesModalExists) {
         state._preferencesModalExists = true;
@@ -487,7 +577,7 @@ export const createPreferencesModal = (api, createMainContainer) => {
         setTimeout(() => addClass(dom._pmContainer, 'cc--anim'), 100);
     }
 
-    getModalFocusableData(2);
+    getModalFocusableData('preferences');
 };
 
 /**
@@ -504,16 +594,16 @@ function createToggleLabel(label, value, sCurrentCategoryObject, isService, cate
 
     /** @type {HTMLLabelElement} */ const toggleLabel = createNode('label');
     /** @type {HTMLInputElement} */ const toggle = createNode('input');
-    /** @type {HTMLSpanElement} */  const toggleIcon = createNode('span');
-    /** @type {HTMLSpanElement} */  const toggleIconCircle = createNode('span');
-    /** @type {HTMLSpanElement} */  const toggleLabelSpan = createNode('span');
+    /** @type {HTMLSpanElement} */  const toggleIcon = createNode(SPAN_TAG);
+    /** @type {HTMLSpanElement} */  const toggleIconCircle = createNode(SPAN_TAG);
+    /** @type {HTMLSpanElement} */  const toggleLabelSpan = createNode(SPAN_TAG);
 
     // each will contain 2 pseudo-elements to generate 'tick' and 'x' icons
-    /** @type {HTMLSpanElement} */  const toggleOnIcon = createNode('span');
-    /** @type {HTMLSpanElement} */  const toggleOffIcon = createNode('span');
+    /** @type {HTMLSpanElement} */  const toggleOnIcon = createNode(SPAN_TAG);
+    /** @type {HTMLSpanElement} */  const toggleOffIcon = createNode(SPAN_TAG);
 
-    toggleOnIcon.innerHTML = getSvgIcon(1, 3);
-    toggleOffIcon.innerHTML = getSvgIcon(0, 3);
+    toggleOnIcon.innerHTML = getSvgIcon('tick', 3);
+    toggleOffIcon.innerHTML = getSvgIcon('x', 3);
 
     toggle.type = 'checkbox';
 
@@ -609,4 +699,474 @@ function createToggleLabel(label, value, sCurrentCategoryObject, isService, cate
     appendChild(toggleLabel, toggleLabelSpan);
 
     return toggleLabel;
+}
+
+/**
+ * Generates the purpose toggle container DOM structure.
+ *
+ * @param {any} data
+ * @param {number} count
+ * @param {boolean} isReadonly
+ * @param {import('../global').PreferencesModalOptions} modalData
+ * @param {import("../global").Api} api
+ * @param {CreateMainContainer} createMainContainer
+ * @param {boolean} isSpecialFeature
+ * @returns {HTMLElement}
+ */
+function createPurposeToggleContainer(data, count, isReadonly, modalData, api, createMainContainer, isSpecialFeature = false) {
+    const {
+        id,
+        name,
+        description,
+        illustrations = [],
+        purposes,
+        specialFeatures
+    } = data;
+
+    const {
+        hidePreferences,
+        showVendors
+    } = api;
+
+    const isStack = 'purposes' in data || 'specialFeatures' in data;
+
+    const {
+        viewVendorsLabel = 'List of IAB Vendors',
+        viewIllustrationsLabel = 'View Illustrations',
+        purposeVendorCountLabel = '{{count}} partners can use this purpose',
+        purposeVendorCountPlaceholder = '{{count}}'
+    } = modalData;
+
+    const state = globalObj._state;
+
+    /**
+     * Handles the show vendors list click action.
+     */
+    const handleShowVendorsList = () => {
+        hidePreferences();
+        showVendors();
+    };
+
+    // Main toggle container
+    var purposeToggle = createNode(DIV_TAG);
+    addClassPm(purposeToggle, 'section--toggle');
+    addClassPm(purposeToggle, 'section--expandable');
+    addClassPm(purposeToggle, 'section--purpose');
+
+    // Title container
+    var purposeTitleContainer = createNode(DIV_TAG);
+    addClassPm(purposeTitleContainer, 'section-title-wrapper');
+
+    var purposeTitleBtn = createNode(BUTTON_TAG);
+    addClassPm(purposeTitleBtn, 'section-title');
+
+    var purposeTitleAndCountContainer = createNode(DIV_TAG);
+    addClassPm(purposeTitleAndCountContainer, 'section-title-count-wrapper');
+
+    var purposeTitle = createNode(SPAN_TAG);
+    purposeTitle.innerHTML = name;
+
+    var purposeVendorCount = createNode(SPAN_TAG);
+    addClassPm(purposeVendorCount, 'vendor-count');
+    purposeVendorCount.innerHTML = purposeVendorCountLabel.replace(purposeVendorCountPlaceholder, count);
+
+    appendChild(purposeTitleAndCountContainer, purposeTitle);
+    appendChild(purposeTitleAndCountContainer, purposeVendorCount);
+    appendChild(purposeTitleBtn, purposeTitleAndCountContainer);
+
+    appendChild(purposeTitleContainer, purposeTitleBtn);
+
+    // Arrow icon
+    const purposeTitleIcon = createNode(SPAN_TAG);
+    purposeTitleIcon.innerHTML = getSvgIcon('arrow', 3.5);
+    addClassPm(purposeTitleIcon, 'section-arrow');
+
+    appendChild(purposeTitleContainer, purposeTitleIcon);
+
+    // Toggle
+    const toggle = createPurposeToggle(name, id, isReadonly, isSpecialFeature, isStack);
+    appendChild(purposeTitleContainer, toggle);
+
+    var expandableDivId = `${replaceTextSpacesWithSymbol(name, '-').toLowerCase()}-desc`;
+    setAttribute(purposeTitleBtn, 'aria-expanded', false);
+    setAttribute(purposeTitleBtn, 'aria-controls', expandableDivId);
+
+    appendChild(purposeToggle, purposeTitleContainer);
+
+    // Description container
+    var purposeDescriptionContainer = createNode(DIV_TAG);
+    purposeDescriptionContainer.id = expandableDivId;
+    addClassPm(purposeDescriptionContainer, 'section-desc-wrapper');
+    setAttribute(purposeDescriptionContainer, ARIA_HIDDEN, true);
+    setAttribute(purposeDescriptionContainer, 'tabindex', -1);
+
+    var purposeDescription = createNode(DIV_TAG);
+    addClassPm(purposeDescription, 'section-desc');
+    appendChild(purposeDescriptionContainer, purposeDescription);
+
+    var purposeDesc = createNode('p');
+    purposeDesc.innerHTML = description;
+    appendChild(purposeDescription, purposeDesc);
+
+    // If the current purpose is actually a stack, we need to display purposes and special features it contains
+    if (isStack) {
+        const stackToggles = createNode(DIV_TAG);
+        addClassPm(stackToggles, 'stack-toggles');
+        appendChild(purposeDescription, stackToggles);
+
+        // Step 1: Show stack's purposes
+        for (const { data, count } of purposes) {
+            const stackPurposeToggleContainer = createStackPurposeToggleContainer(data, count, id, modalData);
+
+            appendChild(stackToggles, stackPurposeToggleContainer);
+        }
+
+        // Step 2: Show stack's special features
+        for ( const { data, count } of specialFeatures) {
+            const stackPurposeToggleContainer = createStackPurposeToggleContainer(data, count, id, modalData, true);
+
+            appendChild(stackToggles, stackPurposeToggleContainer);
+        }
+    }
+
+    var purposeLinksContainer = createNode(DIV_TAG);
+    addClassPm(purposeLinksContainer, 'purpose-links');
+    appendChild(purposeDescription, purposeLinksContainer);
+
+    var vendorsModalLink = createNode('p');
+    vendorsModalLink.innerHTML = viewVendorsLabel;
+    addClass(vendorsModalLink, 'cc__link');
+    setAttribute(vendorsModalLink, 'aria-label', viewVendorsLabel);
+    addEvent(vendorsModalLink, 'mouseenter', () => {
+        if(!state._vendorsModalExists) {
+            createVendorsModal(api, createMainContainer);
+        }
+    });
+    addEvent(vendorsModalLink, CLICK_EVENT, handleShowVendorsList);
+    appendChild(purposeLinksContainer, vendorsModalLink);
+
+    if (illustrations.length) {
+        var viewIllustrationsLink = createNode('p');
+        viewIllustrationsLink.innerHTML = viewIllustrationsLabel;
+        addClass(viewIllustrationsLink, 'cc__link');
+        setAttribute(viewIllustrationsLink, 'aria-label', viewIllustrationsLabel);
+        addEvent(viewIllustrationsLink, CLICK_EVENT, () => {
+            showIllustrations(name, illustrations, modalData, expandableDivId);
+        });
+        appendChild(purposeLinksContainer, viewIllustrationsLink);
+    }
+
+    appendChild(purposeToggle, purposeDescriptionContainer);
+
+    addEvent(purposeTitleBtn, CLICK_EVENT, () => {
+        if (!hasClass(purposeToggle, 'is-expanded')) {
+            addClass(purposeToggle, 'is-expanded');
+            setAttribute(purposeTitleBtn, 'aria-expanded', true);
+            setAttribute(purposeDescriptionContainer, ARIA_HIDDEN, false);
+        } else {
+            removeClass(purposeToggle, 'is-expanded');
+            setAttribute(purposeTitleBtn, 'aria-expanded', false);
+            setAttribute(purposeDescriptionContainer, ARIA_HIDDEN, true);
+        }
+    });
+
+    return purposeToggle;
+}
+
+/**
+ * Generates the stack's purpose toggle DOM structure.
+ *
+ * @param {any} data
+ * @param {number} count
+ * @param {number} stackId
+ * @param {import('../global').PreferencesModalOptions} modalData
+ * @param {boolean} isSpecialFeature
+ * @returns {HTMLElement}
+ */
+function createStackPurposeToggleContainer(data, count, stackId, modalData, isSpecialFeature = false) {
+    const {
+        id,
+        name: purposeName,
+        description: purposeDescription,
+        illustrations: purposeIllustrations = []
+    } = data;
+
+    const {
+        viewIllustrationsLabel = 'View Illustrations',
+        purposeVendorCountLabel = '{{count}} partners can use this purpose',
+        purposeVendorCountPlaceholder = '{{count}}'
+    } = modalData;
+
+    const stackToggleContainer = createNode(DIV_TAG);
+    addClassPm(stackToggleContainer, 'stack-toggle');
+
+    // Header container
+    const stackToggleHeader = createNode(DIV_TAG);
+    addClassPm(stackToggleHeader, 'stack-toggle-header');
+    appendChild(stackToggleContainer, stackToggleHeader);
+
+    const stackTitleContainer = createNode(DIV_TAG);
+    addClassPm(stackTitleContainer, 'stack-toggle-title-wrapper');
+
+    var title = createNode(SPAN_TAG);
+    addClassPm(title, 'stack-toggle-title');
+    title.innerHTML = purposeName;
+    appendChild(stackTitleContainer, title);
+
+    var vendorCount = createNode(SPAN_TAG);
+    addClassPm(vendorCount, 'vendor-count');
+    vendorCount.innerHTML = purposeVendorCountLabel.replace(purposeVendorCountPlaceholder, count);
+    appendChild(stackTitleContainer, vendorCount);
+
+    appendChild(stackToggleHeader, stackTitleContainer);
+
+    // Toggle
+    const toggle = createPurposeToggle(purposeName, id, false, isSpecialFeature, false, stackId);
+    appendChild(stackToggleHeader, toggle);
+
+    // Description container
+    var stackToggleDescription = createNode('p');
+    stackToggleDescription.id = `${replaceTextSpacesWithSymbol(purposeName, '-').toLowerCase()}-desc`;
+    stackToggleDescription.innerHTML = purposeDescription;
+    addClassPm(stackToggleDescription, 'stack-toggle-description');
+    setAttribute(stackToggleDescription, 'tabindex', -1);
+    appendChild(stackToggleContainer, stackToggleDescription);
+
+    // Links container
+    if (purposeIllustrations.length) {
+        var stackToggleLinksContainer = createNode(DIV_TAG);
+        addClassPm(stackToggleLinksContainer, 'purpose-links');
+        appendChild(stackToggleContainer, stackToggleLinksContainer);
+
+        var link = createNode('p');
+        link.innerHTML = viewIllustrationsLabel;
+        addClass(link, 'cc__link');
+        setAttribute(link, 'aria-label', viewIllustrationsLabel);
+        addEvent(link, CLICK_EVENT, () => {
+            var focusId = `${replaceTextSpacesWithSymbol(purposeName, '-').toLowerCase()}-desc`;
+            showIllustrations(purposeName, purposeIllustrations, modalData, focusId);
+        });
+        appendChild(stackToggleLinksContainer, link);
+    }
+
+    return stackToggleContainer;
+}
+
+/**
+ * Generates the purpose toggle DOM structure.
+ *
+ * @param {string} label Toggle label
+ * @param {string} value Toggle value
+ * @param {boolean} isReadonly Should toggle be disabled
+ * @param {boolean} isSpecialFeature Is the toggle a special feature toggle
+ * @param {boolean} isStack Is the toggle a stack toggle
+ * @param {number | null} parentStackValue Parent stack toggle value
+ * @returns {HTMLElement}
+ */
+function createPurposeToggle(label, value, isReadonly = false, isSpecialFeature = false, isStack = false, parentStackValue = null) {
+    const state = globalObj._state;
+    const dom = globalObj._dom;
+
+    const {
+        originalStacks
+    } = state._gvlData;
+
+    const toggleLabel = createNode('label');
+    const toggle = createNode('input');
+    const toggleIcon = createNode(SPAN_TAG);
+    const toggleIconCircle = createNode(SPAN_TAG);
+    const toggleLabelSpan = createNode(SPAN_TAG);
+
+    const toggleOnIcon = createNode(SPAN_TAG);
+    toggleOnIcon.innerHTML = getSvgIcon('tick', 3);
+
+    const toggleOffIcon = createNode(SPAN_TAG);
+    toggleOffIcon.innerHTML = getSvgIcon('x', 3);
+
+    toggle.type = 'checkbox';
+
+    addClass(toggleLabel, 'section__toggle-wrapper');
+    addClass(toggle, 'section__toggle');
+    addClass(toggleOnIcon, 'toggle__icon-on');
+    addClass(toggleOffIcon, 'toggle__icon-off');
+    addClass(toggleIcon, 'toggle__icon');
+    addClass(toggleIconCircle, 'toggle__icon-circle');
+    addClass(toggleLabelSpan, 'toggle__label');
+
+    setAttribute(toggleIcon, ARIA_HIDDEN, true);
+
+    // Save references for the inputs and appropriate events
+    if (isStack) {
+        dom._stackCheckboxInputs[value] = toggle;
+
+        addEvent(toggle, CLICK_EVENT, () => {
+            const isChecked = toggle.checked;
+
+            const stackPurposeIds = originalStacks[value].purposes;
+            const stackSpecialFeatureIds = originalStacks[value].specialFeatures;
+
+            const purposeInputs = dom._purposeCheckboxInputs;
+            const specialFeatureInputs = dom._specialFeatureCheckboxInputs;
+
+            // Toggle all purposes in the current stack
+            for (const purposeId of stackPurposeIds) {
+                purposeInputs[purposeId].checked = isChecked;
+            }
+
+            // Toggle all special features in the current stack
+            for (const specialFeatureId of stackSpecialFeatureIds) {
+                specialFeatureInputs[specialFeatureId].checked = isChecked;
+            }
+        });
+    } else if (isSpecialFeature) {
+        dom._specialFeatureCheckboxInputs[value] = toggle;
+
+        addEvent(toggle, CLICK_EVENT, () => {
+            // Toggle the parent stack toggle if any child is checked and untoggle if nothing is checked
+            if (parentStackValue) {
+                const stackToggle = dom._stackCheckboxInputs[parentStackValue];
+
+                const stackSpecialFeatureIds = originalStacks[parentStackValue].specialFeatures;
+                const specialFeatureInputs = dom._specialFeatureCheckboxInputs;
+                
+                stackToggle.checked = stackSpecialFeatureIds.some((id) => specialFeatureInputs[id].checked);
+            }
+        });
+    } else if (!isReadonly) {
+        dom._purposeCheckboxInputs[value] = toggle;
+
+        addEvent(toggle, CLICK_EVENT, () => {
+            // Toggle the parent stack toggle if any child is checked and untoggle if nothing is checked
+            if (parentStackValue) {
+                const stackToggle = dom._stackCheckboxInputs[parentStackValue];
+  
+                const stackPurposeIds = originalStacks[parentStackValue].purposes;
+                const purposeInputs = dom._purposeCheckboxInputs;
+
+                stackToggle.checked = stackPurposeIds.some((id) => purposeInputs[id].checked);
+            }
+        });
+    }
+
+    toggle.value = value;
+    toggleLabelSpan.textContent = label.replace(/<.*>.*<\/.*>/gm, '');
+
+    appendChild(toggleIconCircle, toggleOffIcon);
+    appendChild(toggleIconCircle, toggleOnIcon);
+    appendChild(toggleIcon, toggleIconCircle);
+
+    // If the consent is valid, retrieve checked states from a state
+    // Otherwise set it to false
+    if (!state._invalidConsent) {
+        if (isStack) {
+            const stackPurposeIds = originalStacks[value].purposes;
+            const stackSpecialFeatureIds = originalStacks[value].specialFeatures;
+
+            toggle.checked = stackPurposeIds.some((id) => acceptedPurpose(id)) || stackSpecialFeatureIds.some((id) => acceptedSpecialFeature(id));
+        } else if (isSpecialFeature) {
+            toggle.checked = acceptedSpecialFeature(value);
+        } else {
+            toggle.checked = acceptedPurpose(value);
+        }
+    } else {
+        toggle.checked = false;
+    }
+
+    // Set toggle as readonly if necessary
+    if (isReadonly) {
+        toggle.checked = true;
+        toggle.disabled = true;
+    }
+
+    appendChild(toggleLabel, toggle);
+    appendChild(toggleLabel, toggleIcon);
+    appendChild(toggleLabel, toggleLabelSpan);
+
+    return toggleLabel;
+}
+
+/**
+ * Generates and shows the illustrations on the current modal.
+ *
+ * @param {string} purposeName
+ * @param {string[]} illustrations
+ * @param {import('../global').PreferencesModalOptions} modalData
+ */
+function showIllustrations(purposeName, illustrations, modalData, lastFocusedElementId) {
+    const dom = globalObj._dom;
+
+    const {
+        illustrationsTitle = 'Illustrations'
+    } = modalData;
+
+    /**
+     * Handles the back arrow click action.
+     */
+    const handleBackArrowClick = () => {
+        replaceChild(dom._pm, dom._pmIllustrationsDom.header, dom._pmBeforeIllustrationsDom.header);
+        replaceChild(dom._pm, dom._pmIllustrationsDom.body, dom._pmBeforeIllustrationsDom.body);
+        replaceChild(dom._pm, dom._pmIllustrationsDom.footer, dom._pmBeforeIllustrationsDom.footer);
+
+        focus(getElementById(lastFocusedElementId));
+    };
+
+    // Header
+    const illHeader = createNode(DIV_TAG);
+    addClassPm(illHeader, 'header');
+
+    const illTitleContainer = createNode(DIV_TAG);
+    addClassPm(illTitleContainer, 'title-container');
+
+    const illBackArrow = createNode(SPAN_TAG);
+    illBackArrow.innerHTML = getSvgIcon('arrow', 4);
+    addClassPm(illBackArrow, 'back-arrow');
+    addEvent(illBackArrow, CLICK_EVENT, handleBackArrowClick);
+    appendChild(illTitleContainer, illBackArrow);
+
+    const illTitle = createNode(H2_TAG);
+    addClassPm(illTitle, 'title');
+    illTitle.id = 'pm__title';
+    illTitle.innerHTML = illustrationsTitle;
+    appendChild(illTitleContainer, illTitle);
+
+    appendChild(illHeader, illTitleContainer);
+
+    // Body
+    const illBody = createNode(DIV_TAG);
+    addClassPm(illBody, 'body');
+
+    const illPurposeName = createNode(H3_TAG);
+    illPurposeName.innerHTML = purposeName;
+    addClassPm(illPurposeName, 'ill-purpose-name');
+    appendChild(illBody, illPurposeName);
+
+    const illPurposeTextContainer = createNode(DIV_TAG);
+    addClassPm(illPurposeTextContainer, 'ill-purpose-wrapper');
+    appendChild(illBody, illPurposeTextContainer);
+
+    for (const illustration of illustrations) {
+        const illustrationText = createNode('p');
+        illustrationText.innerHTML = illustration;
+        appendChild(illPurposeTextContainer, illustrationText);
+    }
+
+    // Footer
+    const illFooter = createNode(DIV_TAG);
+
+    dom._pmIllustrationsDom = {
+        header: illHeader,
+        body: illBody,
+        footer: illFooter
+    };
+
+    // Cache the current and show the illustrations DOM structure
+    dom._pmBeforeIllustrationsDom = {
+        header: dom._pmHeader,
+        body: dom._pmBody,
+        footer: dom._pmFooter
+    };
+
+    replaceChild(dom._pm, dom._pmBeforeIllustrationsDom.header, dom._pmIllustrationsDom.header);
+    replaceChild(dom._pm, dom._pmBeforeIllustrationsDom.body, dom._pmIllustrationsDom.body);
+    replaceChild(dom._pm, dom._pmBeforeIllustrationsDom.footer, dom._pmIllustrationsDom.footer);
 }

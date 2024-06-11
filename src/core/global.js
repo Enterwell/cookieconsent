@@ -15,6 +15,7 @@ import { COOKIE_NAME, OPT_IN_MODE } from '../utils/constants';
  * @typedef {CookieConsent.Translation} Translation
  * @typedef {CookieConsent.ConsentModalOptions} ConsentModalOptions
  * @typedef {CookieConsent.PreferencesModalOptions} PreferencesModalOptions
+ * @typedef {CookieConsent.VendorsModalOptions} VendorsModalOptions
  * @typedef {CookieConsent.CookieTable} CookieTable
  * @typedef {CookieConsent.Section} Section
  * @typedef {CookieConsent.CookieValue} CookieValue
@@ -40,18 +41,27 @@ import { COOKIE_NAME, OPT_IN_MODE } from '../utils/constants';
  * @property {HTMLElement} _ccMain
  * @property {HTMLElement} _cmContainer
  * @property {HTMLElement} _pmContainer
+ * @property {HTMLElement} _vmContainer
  *
  * @property {HTMLElement} _cm
  * @property {HTMLElement} _cmBody
+ * @property {HTMLElement} _cmBodyRow
+ * @property {HTMLElement} _cmVendorBody
+ * @property {HTMLElement} _cmVendorCount
+ * @property {HTMLElement} _cmVendorText
+ * @property {HTMLElement} _cmVendorTitle
+ * @property {HTMLElement} _cmVendorDescription
  * @property {HTMLElement} _cmTexts
  * @property {HTMLElement} _cmTitle
  * @property {HTMLElement} _cmDescription
  * @property {HTMLElement} _cmBtns
+ * @property {HTMLElement} _cmVendorBtns
  * @property {HTMLElement} _cmBtnGroup
  * @property {HTMLElement} _cmBtnGroup2
  * @property {HTMLElement} _cmAcceptAllBtn
  * @property {HTMLElement} _cmAcceptNecessaryBtn
  * @property {HTMLElement} _cmShowPreferencesBtn
+ * @property {HTMLElement} _cmShowVendorsBtn
  * @property {HTMLElement} _cmFooterLinksGroup
  * @property {HTMLElement} _cmCloseIconBtn
  *
@@ -66,13 +76,32 @@ import { COOKIE_NAME, OPT_IN_MODE } from '../utils/constants';
  * @property {HTMLElement} _pmAcceptAllBtn
  * @property {HTMLElement} _pmAcceptNecessaryBtn
  * @property {HTMLElement} _pmSavePreferencesBtn
+ * @property {HTMLElement} _pmSectionToggleContainer
+ * @property {{ header: HTMLElement, body: HTMLElement, footer: HTMLElement }} _pmBeforeIllustrationsDom
+ * @property {{ header: HTMLElement, body: HTMLElement, footer: HTMLElement }} _pmIllustrationsDom
+ * @property {HTMLElement} _pmIllBackArrow
+ * 
+ * @property {HTMLElement} _vm
+ * @property {HTMLElement} _vmHeader
+ * @property {HTMLElement} _vmTitle
+ * @property {HTMLElement} _vmCloseBtn
+ * @property {HTMLElement} _vmBody
+ * @property {HTMLElement} _vmFooter
+ * @property {HTMLElement} _vmAllowAllBtn
+ * @property {HTMLElement} _vmRejectAllBtn
+ * @property {HTMLElement} _vmAllowSelectionBtn
  *
  * @property {Object.<string, HTMLInputElement>} _categoryCheckboxInputs
  * @property {Object.<string, ServiceToggle>} _serviceCheckboxInputs
+ * @property {Object.<number, HTMLInputElement>} _stackCheckboxInputs
+ * @property {Object.<number, HTMLInputElement>} _purposeCheckboxInputs
+ * @property {Object.<number, HTMLInputElement>} _specialFeatureCheckboxInputs
+ * @property {Object.<number, HTMLInputElement>} _vendorCheckboxInputs
  *
  * // Used to properly restore focus when modal is closed
  * @property {HTMLSpanElement} _focusSpan
  * @property {HTMLSpanElement} _pmFocusSpan
+ * @property {HTMLSpanElement} _vmFocusSpan
  */
 
 /**
@@ -92,7 +121,6 @@ import { COOKIE_NAME, OPT_IN_MODE } from '../utils/constants';
 
 export class GlobalState {
     constructor() {
-
         /**
          * Default config. options
          * @type {CookieConsent.CookieConsentConfig}
@@ -104,6 +132,8 @@ export class GlobalState {
             //{{START: GUI}}
             autoShow: true,
             lazyHtmlGeneration: true,
+            isTcfCompliant: false,
+            tcfComplianceConfig: {},
             //{{END: GUI}}
 
             autoClearCookies: true,
@@ -142,6 +172,76 @@ export class GlobalState {
             * @type {CookieValue}
             */
             _savedCookieContent : {},
+
+            /**
+             * Fetched GVL json data.
+             *
+             * @type {Object}
+             */
+            _gvlJson: {},
+
+            /**
+             * Mapped GVL data.
+             * 
+             * @type {ReturnType<typeof import("../utils/gvl").mapGvlData>}
+             */
+            _gvlData: null,
+
+            /**
+             * Is the CMP API stub loaded.
+             *
+             * @type {boolean}
+             */
+            _isCmpApiStubLoaded: false,
+
+            /**
+             * Is the full CMP API loaded.
+             *
+             * @type {boolean}
+             */
+            _isCmpApiLoaded: false,
+
+            /**
+             * Keeping track of accepted purpose IDs.
+             *
+             * @type {number[]}
+             */
+            _acceptedPurposeIds: [],
+
+            /**
+             * Keeping track of the latest purpose IDs change.
+             *
+             * @type {number[]}
+             */
+            _lastChangedPurposeIds: [],
+
+            /**
+             * Keeping track of accepted special feature IDs.
+             *
+             * @type {number[]}
+             */
+            _acceptedSpecialFeatureIds: [],
+
+            /**
+             * Keeping track of the latest special feature IDs change.
+             *
+             * @type {number[]}
+             */
+            _lastChangedSpecialFeatureIds: [],
+
+            /**
+             * Keeping track of allowed vendor IDs.
+             *
+             * @type {number[]}
+             */
+            _allowedVendorIds: [],
+
+            /**
+             * Keeping track of the latest vendor IDs change.
+             *
+             * @type {number[]}
+             */
+            _lastChangedVendorIds: [],
 
             /**
              * Store all event data-cc event listeners
@@ -185,6 +285,9 @@ export class GlobalState {
 
             _preferencesModalVisible : false,
             _preferencesModalExists: false,
+
+            _vendorsModalVisible: false,
+            _vendorsModalExists: false,
 
             /**
             * @type {HTMLElement[]}
@@ -262,6 +365,7 @@ export class GlobalState {
 
             /** @type {HTMLElement[]} **/ _cmFocusableElements : [],
             /** @type {HTMLElement[]} **/ _pmFocusableElements : [],
+            /** @type {HTMLElement[]} **/ _vmFocusableElements : [],
 
             /**
             * Keep track of enabled/disabled categories
@@ -313,7 +417,11 @@ export class GlobalState {
          */
         this._dom = {
             _categoryCheckboxInputs: {},
-            _serviceCheckboxInputs: {}
+            _serviceCheckboxInputs: {},
+            _stackCheckboxInputs: {},
+            _purposeCheckboxInputs: {},
+            _specialFeatureCheckboxInputs: {},
+            _vendorCheckboxInputs: {}
         };
 
         //{{END: GUI}}
