@@ -1,4 +1,4 @@
-import * as cmpstub from '@iabtechlabtcf/stub';
+import cmpstub from '@iabtechlabtcf/stub';
 import { globalObj } from './global';
 
 /**
