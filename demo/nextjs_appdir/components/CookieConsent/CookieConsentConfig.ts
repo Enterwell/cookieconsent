@@ -15,7 +15,7 @@ const config: CookieConsentConfig = {
     disclosedVendorIds: [755, 12, 32, 416],
     cmpId: 1_500,
     cmpVersion: 1,
-    gvlBaseUrl: 'http://localhost:3000'
+    gvlBaseUrl: window.location.origin
     // gvlDefaultFileName: 'vendor-list.json',
     // gvlLanguageFileName: 'vendor-list-[LANG].json'
   },
