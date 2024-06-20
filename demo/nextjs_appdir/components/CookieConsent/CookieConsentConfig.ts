@@ -19,7 +19,10 @@ const config: CookieConsentConfig = {
     // gvlDefaultFileName: 'vendor-list.json',
     // gvlLanguageFileName: 'vendor-list-[LANG].json'
   },
-
+  explicitPageInteractionPaths: [
+    '/path-to-impressum',
+    '/path-to-privacy-policy'
+  ],
   cookie: {
     // name: 'cc_cookie',
     // domain: location.hostname,
@@ -116,8 +119,8 @@ const config: CookieConsentConfig = {
           acceptNecessaryBtn: 'Accept necessary',
           showPreferencesBtn: 'Cookie settings',
           footer: `
-                      <a href="#path-to-impressum.html" target="_blank">Impressum</a>
-                      <a href="#path-to-privacy-policy.html" target="_blank">Privacy Policy</a>
+                      <a href="/path-to-impressum" target="_blank">Impressum</a>
+                      <a href="/path-to-privacy-policy" target="_blank">Privacy Policy</a>
                   `
         },
         preferencesModal: {
@@ -190,8 +193,8 @@ const config: CookieConsentConfig = {
           showVendorsBtn: 'Popis partnera (dobavljača)',
           vendorTitle: 'Mi i naši partneri obavljamo sljedeće na temelju vaših postavki',
           footer: `
-                      <a href="#path-to-impressum.html" target="_blank">Impressum</a>
-                      <a href="#path-to-privacy-policy.html" target="_blank">Pravila privatnosti</a>
+                      <a href="/path-to-impressum" target="_blank">Impressum</a>
+                      <a href="/path-to-privacy-policy" target="_blank">Pravila privatnosti</a>
                   `
         },
         preferencesModal: {
