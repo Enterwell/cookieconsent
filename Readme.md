@@ -23,6 +23,10 @@ Check out the [Next.js demo application](./demo/nextjs_appdir).
 + `tcfComplianceConfig?: TcfComplianceConfig`
   + Detailed configuration to use if the `isTcfCompliant` configuration option is set to `true`
 
++ `explicitPageInteractionPaths?: string[]`
+  + Explicitly disclosed paths for which the page interaction is enabled
+  + default: `undefined`
+
 ### TcfComplianceConfig
 + `disclosedVendorIds?: number[]`
   + Number IDs of disclosed third party vendors you work with.

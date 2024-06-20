@@ -1,5 +1,12 @@
 import { globalObj } from './global';
-import { debug, getKeys, isObject, retrieveScriptElements, fetchCategoriesAndServices } from '../utils/general';
+import {
+    debug,
+    getKeys,
+    isObject,
+    retrieveScriptElements,
+    fetchCategoriesAndServices,
+    isArray
+} from '../utils/general';
 import { OPT_OUT_MODE } from '../utils/constants';
 import { resolveCurrentLanguageCode, setCurrentLanguageCode } from '../utils/language';
 
@@ -47,6 +54,16 @@ export const setConfig = (userConfig) => {
     // If the modal should be TCF compliant, page interaction needs to be disabled until the user makes a choice
     if (userConfig.isTcfCompliant) {
         state._disablePageInteraction = true;
+    }
+
+    // Check if the current pathname is one of the explicitly disclosed ones for which the page interaction is enabled
+    const explicitPageInteractionPaths = userConfig.explicitPageInteractionPaths;
+    if (explicitPageInteractionPaths && isArray(explicitPageInteractionPaths) && !!explicitPageInteractionPaths.length) {
+        const currentPathname = window?.location?.pathname ?? '';
+
+        if (explicitPageInteractionPaths.includes(currentPathname)) {
+            state._disablePageInteraction = false;
+        }
     }
     //{{END: GUI}}
 

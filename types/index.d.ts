@@ -766,6 +766,13 @@ declare namespace CookieConsent {
         disablePageInteraction?: boolean
 
         /**
+         * Explicitly disclosed paths for which the page interaction is enabled.
+         *
+         * @default undefined
+         */
+        explicitPageInteractionPaths?: string[];
+
+        /**
          * Stop the plugin's execution if a bot/crawler is detected
          * to prevent the indexing of the modal's content.
          *
