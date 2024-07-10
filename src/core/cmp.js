@@ -96,6 +96,7 @@ export const updateTCString = () => {
     tcModel.vendorConsents.set(_savedCookieContent.vendorIds);
     tcModel.vendorLegitimateInterests.set(_savedCookieContent.vendorIds);
     tcModel.purposeConsents.set(_savedCookieContent.purposeIds);
+    tcModel.purposeLegitimateInterests.set(_savedCookieContent.purposeIds);
     tcModel.specialFeatureOptins.set(_savedCookieContent.specialFeatureIds);
 
     // Set if the CMP uses non standard texts
