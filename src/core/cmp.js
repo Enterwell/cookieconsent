@@ -35,6 +35,7 @@ export const configCmpApi = async () => {
         cmpVersion,
         disclosedVendorIds,
         gvlBaseUrl,
+        explicitAcString,
         gvlDefaultFileName = 'vendor-list.json',
         gvlLanguageFileName = 'vendor-list-[LANG].json'
     } = _config.tcfComplianceConfig ?? {};
@@ -62,7 +63,33 @@ export const configCmpApi = async () => {
         console.error('An error occurred while loading the GVL:', err);
     }
 
-    cmpApi = new CmpApi(cmpId, cmpVersion, true);
+    if (explicitAcString) {
+        cmpApi = new CmpApi(cmpId, cmpVersion, true, {
+            'getTCData': (next, tcData, status) => {
+                /*
+                * If using with 'removeEventListener' command, add a check to see if tcData is not a boolean. */
+                if (typeof tcData !== 'boolean') {
+                    tcData.addtlConsent = explicitAcString;
+                }
+
+                // pass data and status along
+                next(tcData, status);
+            },
+            'getInAppTCData': (next, tcData, status) => {
+                /*
+                * If using with 'removeEventListener' command, add a check to see if tcData is not a boolean. */
+                if (typeof tcData !== 'boolean') {
+                    tcData.addtlConsent = explicitAcString;
+                }
+
+                // pass data and status along
+                next(tcData, status);
+            }
+        });
+    } else {
+        cmpApi = new CmpApi(cmpId, cmpVersion, true);
+    }
+
     _state._isCmpApiLoaded = true;
 
     updateTCString();
