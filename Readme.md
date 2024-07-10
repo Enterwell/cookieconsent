@@ -54,6 +54,9 @@ Check out the [Next.js demo application](./demo/nextjs_appdir).
   + Placeholder `[LANG]` is replaced with the current language code the consent modal is working with
   + default: `"vendor-list-[LANG].json"`
 
++ `explicitAcString?: string`
+  + Explicit AC string for sending in the TCData
+
 ### GuiOptions
 + `consentModal?` - by enabling TCF compliance consent modal layout is __fixed__ to `bar-bottom` and these settings are not applied.
 

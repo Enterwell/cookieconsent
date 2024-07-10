@@ -698,6 +698,11 @@ declare namespace CookieConsent {
        * @default "vendor-list-[LANG].json"
        */
       gvlLanguageFileName?: string;
+
+      /**
+       * Explicit AC string for sending in the TCData.
+       */
+      explicitAcString?: string;
     }
 
     interface CookieConsentConfig {
