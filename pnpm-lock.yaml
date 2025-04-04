@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@iabtechlabtcf/cmpapi':
-        specifier: 1.5.12
-        version: 1.5.12(@iabtechlabtcf/core@1.5.12)
+        specifier: 1.5.15
+        version: 1.5.15(@iabtechlabtcf/core@1.5.15)
       '@iabtechlabtcf/core':
-        specifier: ^1.5.12
-        version: 1.5.12
+        specifier: 1.5.15
+        version: 1.5.15
       '@iabtechlabtcf/stub':
-        specifier: 1.5.12
-        version: 1.5.12
+        specifier: 1.5.15
+        version: 1.5.15
     devDependencies:
       '@babel/core':
         specifier: ^7.24.3
@@ -925,16 +925,16 @@ packages:
   '@humanwhocodes/object-schema@2.0.2':
     resolution: {integrity: sha512-6EwiSjwWYP7pTckG6I5eyFANjPhmPjUX9JRLUSfNPC7FX7zK9gyZAfUEaECL6ALTpGX5AjnBq3C9XmVWPitNpw==}
 
-  '@iabtechlabtcf/cmpapi@1.5.12':
-    resolution: {integrity: sha512-QbXfzMmlL4l0LbZ0WWWVlFq2ts4z1ZCK2kJwhdG4g2qhM+4KgRJzhL7SWRZr9lCRhpp6Q6WvwxDzgojRGaa9ng==}
+  '@iabtechlabtcf/cmpapi@1.5.15':
+    resolution: {integrity: sha512-ls5hhGqUuLaBhJqzUvSMTQE8BnqBgdFB8APPC9ofD3tGI+T6GG53zDtHvK/eBYCQh6i0fJCIQ3ERVWkEflR0XA==}
     peerDependencies:
       '@iabtechlabtcf/core': '>=1.0.0'
 
-  '@iabtechlabtcf/core@1.5.12':
-    resolution: {integrity: sha512-xm2Q28FXA/1sHY/Xr5YKQ/PEAeEa3BtL5RZLIQ3pk+jtp7dl6YPBpaQokYwXVUijMJPA2q7KLfZRchvV6wmLAg==}
+  '@iabtechlabtcf/core@1.5.15':
+    resolution: {integrity: sha512-fQj7VJPeKgcEjfHryj5n6wh6Gc63MkhZYNNt3mee0I+5Hsiq5G2QQ65TkZqHfwBG9vG7YjbQmADdWIEtwaxK3g==}
 
-  '@iabtechlabtcf/stub@1.5.12':
-    resolution: {integrity: sha512-pe7+JXGq6yUsBE+a0BVCz5aXsfQPYD6IeyxFKQp379L7JCpLOPpM4zYz/KtXQhFhAjU5jalP0OvXctjafbHaBw==}
+  '@iabtechlabtcf/stub@1.5.15':
+    resolution: {integrity: sha512-phay49OXNXl/9Z3K0nthJL9IVn1sWXy8RaMEFhwMuqYEZcQ8Jw69ejqC/kdhOWPNWsdulF2ZtKgGBsVX1J0EAA==}
 
   '@istanbuljs/load-nyc-config@1.1.0':
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
@@ -4385,13 +4385,13 @@ snapshots:
 
   '@humanwhocodes/object-schema@2.0.2': {}
 
-  '@iabtechlabtcf/cmpapi@1.5.12(@iabtechlabtcf/core@1.5.12)':
+  '@iabtechlabtcf/cmpapi@1.5.15(@iabtechlabtcf/core@1.5.15)':
     dependencies:
-      '@iabtechlabtcf/core': 1.5.12
+      '@iabtechlabtcf/core': 1.5.15
 
-  '@iabtechlabtcf/core@1.5.12': {}
+  '@iabtechlabtcf/core@1.5.15': {}
 
-  '@iabtechlabtcf/stub@1.5.12': {}
+  '@iabtechlabtcf/stub@1.5.15': {}
 
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:

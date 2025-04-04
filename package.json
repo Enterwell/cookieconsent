@@ -61,8 +61,8 @@
         }
     },
     "dependencies": {
-        "@iabtechlabtcf/cmpapi": "1.5.12",
-        "@iabtechlabtcf/core": "1.5.12",
-        "@iabtechlabtcf/stub": "1.5.12"
+        "@iabtechlabtcf/cmpapi": "1.5.15",
+        "@iabtechlabtcf/core": "1.5.15",
+        "@iabtechlabtcf/stub": "1.5.15"
     }
 }
