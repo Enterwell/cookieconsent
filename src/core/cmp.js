@@ -17,6 +17,77 @@ let gvl;
 let cmpApi;
 
 /**
+ * @type {Promise<boolean> | undefined}
+ */
+let gvlPromise;
+
+/**
+ * @type {string}
+ */
+let gvlLanguageCode = '';
+
+/**
+ * Loads the Global Vendor List if it is needed and has not already been loaded
+ * for the current language.
+ *
+ * @returns {Promise<boolean>}
+ */
+export const ensureGvlLoaded = async () => {
+    const { _config, _state } = globalObj;
+
+    if (!_config.isTcfCompliant) return true;
+
+    const currentLanguageCode = _state._currentLanguageCode;
+
+    if (gvl && _state._gvlData && gvlLanguageCode === currentLanguageCode) {
+        return true;
+    }
+
+    if (gvlPromise) {
+        return gvlPromise;
+    }
+
+    const {
+        disclosedVendorIds,
+        gvlBaseUrl,
+        gvlDefaultFileName = 'vendor-list.json',
+        gvlLanguageFileName = 'vendor-list-[LANG].json'
+    } = _config.tcfComplianceConfig ?? {};
+
+    gvlPromise = (async () => {
+        try {
+            // Construct the GVL file name correctly
+            const fileName = currentLanguageCode === 'en' ? gvlDefaultFileName : gvlLanguageFileName.replace('[LANG]', currentLanguageCode);
+
+            const gvlUrl = `${gvlBaseUrl}/${fileName}`;
+
+            const gvlResponse = await fetch(gvlUrl);
+            if (!gvlResponse.ok) {
+                throw new Error(`${gvlResponse.status}: ${gvlResponse.statusText}`);
+            }
+
+            const gvlJson = await gvlResponse.json();
+
+            _state._gvlJson = gvlJson;
+            _state._gvlData = mapGvlData(disclosedVendorIds);
+
+            gvl = new GVL(gvlJson);
+            gvlLanguageCode = currentLanguageCode;
+
+            return true;
+        } catch (err) {
+            console.error('An error occurred while loading the GVL:', err);
+
+            return false;
+        } finally {
+            gvlPromise = undefined;
+        }
+    })();
+
+    return gvlPromise;
+};
+
+/**
  * Configures the CMP API asynchronously.
  */
 export const configCmpApi = async () => {
@@ -24,7 +95,7 @@ export const configCmpApi = async () => {
 
     // Configure the CMP API if the cookie consent should be TCF compliant
     if (!_config.isTcfCompliant) return;
-    
+
     // Check if the CMP API stub was successfully loaded, if not, load it first
     if (!_state._isCmpApiStubLoaded) {
         loadCmpApiStub();
@@ -33,35 +104,8 @@ export const configCmpApi = async () => {
     const {
         cmpId,
         cmpVersion,
-        disclosedVendorIds,
-        gvlBaseUrl,
-        explicitAcString,
-        gvlDefaultFileName = 'vendor-list.json',
-        gvlLanguageFileName = 'vendor-list-[LANG].json'
+        explicitAcString
     } = _config.tcfComplianceConfig ?? {};
-
-    const currentLanguageCode = _state._currentLanguageCode;
-
-    try {
-        // Construct the GVL file name correctly
-        const fileName = currentLanguageCode === 'en' ? gvlDefaultFileName : gvlLanguageFileName.replace('[LANG]', currentLanguageCode);
-
-        const gvlUrl = `${gvlBaseUrl}/${fileName}`;
-
-        const gvlResponse = await fetch(gvlUrl);
-        if (!gvlResponse.ok) {
-            throw new Error(`${gvlResponse.status}: ${gvlResponse.statusText}`);
-        }
-
-        const gvlJson = await gvlResponse.json();
-
-        _state._gvlJson = gvlJson;
-        _state._gvlData = mapGvlData(disclosedVendorIds);
-  
-        gvl = new GVL(gvlJson);
-    } catch (err) {
-        console.error('An error occurred while loading the GVL:', err);
-    }
 
     if (explicitAcString) {
         cmpApi = new CmpApi(cmpId, cmpVersion, true, {
@@ -92,6 +136,16 @@ export const configCmpApi = async () => {
 
     _state._isCmpApiLoaded = true;
 
+    if (validConsent()) {
+        const tcString = _state._savedCookieContent.tcString;
+
+        if (tcString) {
+            cmpApi.update(tcString, false);
+            return;
+        }
+    }
+
+    await ensureGvlLoaded();
     updateTCString();
 };
 
@@ -99,14 +153,23 @@ export const configCmpApi = async () => {
  * Updates the TC string with the new cookie values.
  */
 export const updateTCString = () => {
-    const { _config } = globalObj;
+    const { _config, _state } = globalObj;
 
     // Update the TC string if the cookie consent should be TCF compliant
     if (!_config.isTcfCompliant) return;
 
-    const consentIsValid = validConsent();
+    if (!cmpApi) return;
 
-    if (!consentIsValid || !gvl || !cmpApi) {
+    const consentIsValid = validConsent();
+    const savedTcString = _state._savedCookieContent.tcString;
+
+    if (consentIsValid && !gvl && savedTcString) {
+        cmpApi.update(savedTcString, false);
+
+        return savedTcString;
+    }
+
+    if (!consentIsValid || !gvl) {
         cmpApi.update('', true);
 
         return;
@@ -135,5 +198,8 @@ export const updateTCString = () => {
 
     // Encode TCModel to TCString and update the CMP API
     const encodedString = TCString.encode(tcModel);
+    _state._savedCookieContent.tcString = encodedString;
     cmpApi.update(encodedString, false);
+
+    return encodedString;
 };

@@ -52,13 +52,14 @@ export const createVendorsModal = (api, createMainContainer) => {
 
     // No need to create a vendors modal if the cookie consent is not TCF compliant
     if (!config.isTcfCompliant) return;
+    if (!state._gvlData) return;
 
     /**
      * Handles the back arrow click action.
      */
-    const handleBackArrowClick = () => {
+    const handleBackArrowClick = async () => {
         hideVendors();
-        showPreferences();
+        await showPreferences();
     };
 
     /**
@@ -285,8 +286,8 @@ export const createVendorsModal = (api, createMainContainer) => {
         setAttribute(dom._vmAllowAllBtn, DATA_ROLE, 'all');
         appendChild(_vmBtnGroup1, dom._vmAllowAllBtn);
 
-        addEvent(dom._vmAllowAllBtn, CLICK_EVENT, () => {
-            allowVendors('all');
+        addEvent(dom._vmAllowAllBtn, CLICK_EVENT, async () => {
+            await allowVendors('all');
             hideVendors();
         });
 
@@ -299,8 +300,8 @@ export const createVendorsModal = (api, createMainContainer) => {
         setAttribute(dom._vmRejectAllBtn, DATA_ROLE, 'all');
         appendChild(_vmBtnGroup1, dom._vmRejectAllBtn);
 
-        addEvent(dom._vmRejectAllBtn, CLICK_EVENT, () => {
-            allowVendors([]);
+        addEvent(dom._vmRejectAllBtn, CLICK_EVENT, async () => {
+            await allowVendors([]);
             hideVendors();
         });
 
@@ -314,12 +315,12 @@ export const createVendorsModal = (api, createMainContainer) => {
         setAttribute(dom._vmAllowSelectionBtn, DATA_ROLE, 'save');
         appendChild(_vmBtnGroup2, dom._vmAllowSelectionBtn);
 
-        addEvent(dom._vmAllowSelectionBtn, CLICK_EVENT, () => {
+        addEvent(dom._vmAllowSelectionBtn, CLICK_EVENT, async () => {
             const checkedVendorIds = Object.keys(dom._vendorCheckboxInputs)
                 .filter((id) => dom._vendorCheckboxInputs[id].checked)
                 .map((id) => parseInt(id, 10));
 
-            allowVendors(checkedVendorIds);
+            await allowVendors(checkedVendorIds);
             hideVendors();
         });
 
