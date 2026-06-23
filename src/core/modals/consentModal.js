@@ -95,8 +95,8 @@ export const createConsentModal = (api, createMainContainer) => {
      * @param {'all' | number[]} specialFeaturesToAccept
      * @param {'all' | number[]} vendorsToAllow
      */
-    const acceptAndHide = (categories, purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
-        acceptMultiple(categories, [], purposesToAccept, specialFeaturesToAccept, vendorsToAllow);
+    const acceptAndHide = async (categories, purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
+        await acceptMultiple(categories, [], purposesToAccept, specialFeaturesToAccept, vendorsToAllow);
         hide();
     };
 
@@ -301,6 +301,9 @@ export const createConsentModal = (api, createMainContainer) => {
 
     // Configure the consent modal to be TCF compliant
     if (isTcfCompliant) {
+        if (!state._gvlData)
+            return;
+
         // Step 1: Display the vendor count in the consent description
         const { vendorCount } = state._gvlData;
 

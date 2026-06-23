@@ -35,7 +35,10 @@ export const generateHtml = (api) => {
     if (globalObj._state._invalidConsent)
         createConsentModal(api, createMainContainer);
 
-    if (!globalObj._config.lazyHtmlGeneration) {
+    if (
+        !globalObj._config.lazyHtmlGeneration
+        && (!globalObj._config.isTcfCompliant || globalObj._state._gvlData)
+    ) {
         createPreferencesModal(api, createMainContainer);
         createVendorsModal(api, createMainContainer);
     }

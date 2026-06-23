@@ -176,6 +176,8 @@ export const saveCookiePreferences = () => {
     if (!state._consentId)
         state._consentId = uuidv4();
 
+    const tcStringFromLastState = state._savedCookieContent.tcString;
+
     state._savedCookieContent = {
         categories: deepCopy(state._acceptedCategories),
         revision: globalObj._config.revision,
@@ -186,7 +188,8 @@ export const saveCookiePreferences = () => {
         ...isTcfCompliant && {
             purposeIds: deepCopy(state._acceptedPurposeIds),
             specialFeatureIds: deepCopy(state._acceptedSpecialFeatureIds),
-            vendorIds: deepCopy(state._allowedVendorIds)
+            vendorIds: deepCopy(state._allowedVendorIds),
+            tcString: tcStringFromLastState
         }
     };
 
@@ -212,6 +215,10 @@ export const saveCookiePreferences = () => {
 
         state._savedCookieContent.lastConsentTimestamp = state._lastConsentTimestamp.toISOString();
 
+        // Update the TC String before persisting, so subsequent page loads can
+        // initialize the CMP API without downloading the GVL.
+        updateTCString();
+
         setCookie();
 
         const isAutoClearEnabled = globalObj._config.autoClearCookies;
@@ -221,9 +228,6 @@ export const saveCookiePreferences = () => {
             autoclearCookiesHelper(isFirstConsent);
 
         manageExistingScripts();
-
-        // Update the TC String
-        updateTCString();
     }
 
     if (isFirstConsent) {

@@ -63,14 +63,17 @@ export const createPreferencesModal = (api, createMainContainer) => {
 
     const isTcfCompliant = config.isTcfCompliant;
 
+    if (isTcfCompliant && !state._gvlData)
+        return;
+
     /**
      * @param {string|string[]} [categories]
      * @param {'all' | number[]} purposesToAccept
      * @param {'all' | number[]} specialFeaturesToAccept
      * @param {'all' | number[]} vendorsToAllow
      */
-    const acceptAndHide = (categories, purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
-        acceptMultiple(categories, [], purposesToAccept, specialFeaturesToAccept, vendorsToAllow);
+    const acceptAndHide = async (categories, purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
+        await acceptMultiple(categories, [], purposesToAccept, specialFeaturesToAccept, vendorsToAllow);
         hidePreferences();
         hide();
     };

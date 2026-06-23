@@ -76,7 +76,7 @@ import {
     VENDORS_MODAL_NAME
 } from '../utils/constants';
 import { localStorageManager } from '../utils/localstorage';
-import { configCmpApi } from './cmp';
+import { configCmpApi, ensureGvlLoaded } from './cmp';
 
 /**
  * Accept multiple API.
@@ -87,7 +87,10 @@ import { configCmpApi } from './cmp';
  * @param {'all' | number[]} specialFeaturesToAccept
  * @param {'all' | number[]} vendorsToAllow
  */
-export const acceptMultiple = (categories, excludedCategories = [], purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
+export const acceptMultiple = async (categories, excludedCategories = [], purposesToAccept = 'all', specialFeaturesToAccept = 'all', vendorsToAllow = 'all') => {
+    if (globalObj._config.isTcfCompliant && !await ensureGvlLoaded())
+        return;
+
     resolveEnabledCategories(categories, excludedCategories);
     resolveEnabledServices();
     resolvePurposesAndSpecFeaturesToAccept(purposesToAccept, specialFeaturesToAccept);
@@ -112,7 +115,10 @@ export const acceptCategory = (categories, excludedCategories = []) => {
  *
  * @param {'all' | number[]} vendorsToAllow
  */
-export const allowVendors = (vendorsToAllow) => {
+export const allowVendors = async (vendorsToAllow) => {
+    if (globalObj._config.isTcfCompliant && !await ensureGvlLoaded())
+        return;
+
     resolveVendorsToAllow(vendorsToAllow);
     saveCookiePreferences();
 };
@@ -326,10 +332,13 @@ export const hide = () => {
 /**
  * Show preferences modal
  */
-export const showPreferences = () => {
+export const showPreferences = async () => {
     const state = globalObj._state;
 
     if (state._preferencesModalVisible)
+        return;
+
+    if (globalObj._config.isTcfCompliant && !await ensureGvlLoaded())
         return;
 
     if (!state._preferencesModalExists)
@@ -462,11 +471,14 @@ export const hidePreferences = () => {
 /**
  * Show the vendors modal.
  */
-export const showVendors = () => {
+export const showVendors = async () => {
     const state = globalObj._state;
     const dom = globalObj._dom;
 
     if (state._vendorsModalVisible) return;
+
+    if (globalObj._config.isTcfCompliant && !await ensureGvlLoaded())
+        return;
 
     if (!state._vendorsModalExists) {
         createVendorsModal(miniAPI, createMainContainer);
@@ -546,6 +558,7 @@ var miniAPI = {
     hidePreferences,
     showVendors,
     hideVendors,
+    acceptCategory,
     acceptMultiple
 };
 
@@ -572,6 +585,14 @@ export const setLanguage = async (newLanguageCode, forceUpdate) => {
             return false;
 
         setCurrentLanguageCode(newLanguageCode);
+
+        if (
+            globalObj._config.isTcfCompliant
+            && (state._consentModalExists || state._preferencesModalExists || state._vendorsModalExists)
+            && !await ensureGvlLoaded()
+        ) {
+            return false;
+        }
 
         if (state._consentModalExists)
             createConsentModal(miniAPI, createMainContainer);
@@ -866,10 +887,21 @@ export const run = async (userConfig) => {
 
         retrieveState(userConfig);
 
+        const hadTcString = !!_state._savedCookieContent.tcString;
+
         // Configure the CMP API once the state is retrieved
         await configCmpApi();
 
         const consentIsValid = validConsent();
+
+        if (
+            _config.isTcfCompliant
+            && consentIsValid
+            && !hadTcString
+            && _state._savedCookieContent.tcString
+        ) {
+            setCookie(true);
+        }
 
         //{{START: GUI}}
         const translationLoaded = await loadTranslationData();

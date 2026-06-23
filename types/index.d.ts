@@ -199,6 +199,11 @@ declare namespace CookieConsent {
         vendorIds: number[];
 
         /**
+         * Encoded TCF consent string.
+         */
+        tcString?: string;
+
+        /**
          * Expiration time of the cookie (in case localstorage is used)
          */
         expirationTime: number
@@ -907,7 +912,7 @@ declare namespace CookieConsent {
     /**
      * Show the preferencesModal.
      */
-    function showPreferences(): void
+    function showPreferences(): Promise<void>
 
     /**
      * Hide the preferencesModal.
@@ -917,7 +922,7 @@ declare namespace CookieConsent {
     /**
      * Shows the vendors modal.
      */
-    function showVendors(): void;
+    function showVendors(): Promise<void>;
 
     /**
      * Hides the vendors modal.
@@ -933,7 +938,7 @@ declare namespace CookieConsent {
      * @param specialFeaturesToAccept Special features to accept
      * @param vendorsToAllow Vendors to allow
      */
-    function acceptMultiple(categories: string | string[], excludedCategories?: string[], purposesToAccept?: 'all' | number[], specialFeaturesToAccept?: 'all' | number[], vendorsToAllow?: 'all' | number[]): void
+    function acceptMultiple(categories: string | string[], excludedCategories?: string[], purposesToAccept?: 'all' | number[], specialFeaturesToAccept?: 'all' | number[], vendorsToAllow?: 'all' | number[]): Promise<void>
 
     /**
      * Accept/Reject categories.
@@ -948,7 +953,7 @@ declare namespace CookieConsent {
      *
      * @param vendorsToAllow Vendors to allow or an 'all' keyword to allow all disclosed
      */
-    function allowVendors(vendorsToAllow: 'all' | number[]): void;
+    function allowVendors(vendorsToAllow: 'all' | number[]): Promise<void>;
 
     /**
      * Accept/Reject services.

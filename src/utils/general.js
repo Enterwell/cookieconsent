@@ -440,6 +440,7 @@ export const resolvePurposesAndSpecFeaturesToAccept = (purposesToAccept, special
 
     // Do not proceed if the consent should not be TCF compliant
     if (!isTcfCompliant) return;
+    if (!globalObj._state._gvlData) return;
   
     const { vendors } = globalObj._state._gvlData;
 
@@ -482,6 +483,7 @@ export const resolveVendorsToAllow = (vendorsToAllow) => {
 
     // Do not proceed if the consent should not be TCF compliant
     if (!isTcfCompliant) return;
+    if (!globalObj._state._gvlData) return;
 
     const { vendors } = globalObj._state._gvlData;
 
