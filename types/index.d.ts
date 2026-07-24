@@ -489,6 +489,17 @@ declare namespace CookieConsent {
          * @default "Illustrations"
          */
         illustrationsTitle?: string;
+
+        /**
+         * Label for the badge shown next to disclosure-only entities (features / special purposes)
+         * that are always active and carry no user choice. Replaces the disabled toggle previously
+         * shown for these entities.
+         *
+         * *NOTE: This is only used if the `isTcfCompliant` is set to `true`.*
+         *
+         * @default "Always Enabled"
+         */
+        alwaysEnabledLabel?: string;
     }
 
     interface VendorsModalOptions {

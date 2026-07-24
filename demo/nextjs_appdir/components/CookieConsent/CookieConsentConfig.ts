@@ -130,6 +130,7 @@ const config: CookieConsentConfig = {
           savePreferencesBtn: 'Accept current selection',
           closeIconLabel: 'Close modal',
           serviceCounterLabel: 'Service|Services',
+          alwaysEnabledLabel: 'Always Enabled',
           sections: [
             {
               title: 'About Your Privacy',
@@ -208,6 +209,7 @@ const config: CookieConsentConfig = {
           purposeVendorCountLabel: '{{count}} partnera može koristiti ovu svrhu',
           viewIllustrationsLabel: 'Pogledajte primjere',
           viewVendorsLabel: 'Popis IAB dobavljača',
+          alwaysEnabledLabel: 'Uvijek Omogućeni',
           sections: [
             {
               title: 'O Vašoj Privatnosti',

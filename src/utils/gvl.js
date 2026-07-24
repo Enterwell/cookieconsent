@@ -16,6 +16,10 @@ export const mapGvlData = (disclosedVendorIds) => {
     const originalFeatures = gvl.features;
     const originalSpecialFeatures = gvl.specialFeatures;
 
+    // Standard texts (e.g. the standard explanation shown alongside features) were introduced in the GVL with TCF Policy version 5.0.b.
+    // Default to an empty object so older/cached GVLs still work.
+    const originalStandardTexts = gvl.standardTexts || {};
+
     const originalStacks = gvl.stacks;
     const stacks = Object.values(gvl.stacks);
     
@@ -47,6 +51,7 @@ export const mapGvlData = (disclosedVendorIds) => {
         originalSpecialPurposes,
         originalFeatures,
         originalSpecialFeatures,
+        originalStandardTexts,
         originalStacks,
         stacks,
         vendors,
@@ -128,7 +133,8 @@ export const generateVendorPreferenceModalData = () => {
         originalPurposes,
         originalFeatures,
         originalSpecialPurposes,
-        originalSpecialFeatures
+        originalSpecialFeatures,
+        originalStandardTexts
     } = globalObj._state._gvlData;
 
     /**
@@ -224,6 +230,7 @@ export const generateVendorPreferenceModalData = () => {
         specialPurposes,
         features,
         specialFeatures,
-        specialFeatureIdsToShow: uniqueVendorSpecialFeatureIds
+        specialFeatureIdsToShow: uniqueVendorSpecialFeatureIds,
+        standardTexts: originalStandardTexts
     };
 };

@@ -124,6 +124,11 @@ Check out the [Next.js demo application](./demo/nextjs_appdir).
   + default: `"Illustrations"`
   + *NOTE: This is only used if the `isTcfCompliant` is set to `true`*
 
++ `alwaysEnabledLabel?: string`
+  + Label for the badge shown next to disclosure-only entities (features / special purposes) that are always active and carry no user choice. As of TCF Policy v5.0.b these entities no longer display a disabled toggle; this non-interactive badge is shown instead.
+  + default: `"Always Enabled"`
+  + *NOTE: This is only used if the `isTcfCompliant` is set to `true`*
+
 #### VendorsModalOptions
 + `title?: string`
   + Set the vendors modal title
