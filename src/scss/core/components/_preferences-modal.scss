@@ -364,6 +364,31 @@ $service-toggle-knob-icon-width: 1.7px;
                 }
             }
         }
+
+        &--disclosure {
+            .pm__section-title {
+                padding-right: 1.2em;
+            }
+        }
+    }
+
+    .pm__always-enabled {
+        flex: none;
+        margin-left: 1em;
+        padding: .5em .8em;
+        border-radius: 5em;
+        font-size: .8em;
+        font-weight: $font-weight-bold;
+        line-height: 1;
+        white-space: nowrap;
+        color: var(--cc-secondary-color);
+        background: var(--cc-btn-secondary-bg);
+    }
+
+    .pm__feature-standard-text {
+        margin: 0 0 .8em;
+        font-style: italic;
+        opacity: .85;
     }
 
     .pm__section-title-wrapper{

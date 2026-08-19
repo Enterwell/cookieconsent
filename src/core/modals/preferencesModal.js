@@ -92,7 +92,8 @@ export const createPreferencesModal = (api, createMainContainer) => {
         acceptAllBtn,
         acceptNecessaryBtn,
         savePreferencesBtn,
-        sections = []
+        sections = [],
+        alwaysEnabledLabel = 'Always Enabled'
     } = modalData;
 
     const createFooter = acceptAllBtn || acceptAllBtn || savePreferencesBtn;
@@ -266,7 +267,16 @@ export const createPreferencesModal = (api, createMainContainer) => {
 
                 s.className += '--toggle';
 
-                const toggleLabel = createToggleLabel(sTitleData, sLinkedCategory, sCurrentCategoryObject);
+                const isReadonlyDisclosure = isTcfCompliant && sCurrentCategoryObject.readOnly;
+
+                const toggleLabel = isReadonlyDisclosure
+                    ? null
+                    : createToggleLabel(sTitleData, sLinkedCategory, sCurrentCategoryObject);
+
+                if (isReadonlyDisclosure) {
+                    addClassPm(s, 'section--disclosure');
+                    appendChild(sTitle, createAlwaysEnabledBadge(alwaysEnabledLabel));
+                }
 
                 let serviceCounterLabel = modalData.serviceCounterLabel;
 
@@ -303,7 +313,9 @@ export const createPreferencesModal = (api, createMainContainer) => {
                     setAttribute(sTitle, 'aria-controls', expandableDivId);
                 }
 
-                appendChild(sTitleContainer, toggleLabel);
+                if (toggleLabel) {
+                    appendChild(sTitleContainer, toggleLabel);
+                }
 
             } else {
                 setAttribute(sTitle, 'role', 'heading');
@@ -445,7 +457,8 @@ export const createPreferencesModal = (api, createMainContainer) => {
             specialFeatures,
             stacksToShow,
             specialPurposes,
-            features
+            features,
+            standardTexts
         } = generateVendorPreferenceModalData();
 
         // Step 1: Show purposes that did not fit in any stack
@@ -481,25 +494,28 @@ export const createPreferencesModal = (api, createMainContainer) => {
             appendChild(dom._pmSectionToggleContainer, purposeToggle);
         }
 
-        // Step 4: Show special purposes as readonly (user has no choice)
+        // Step 4: Show special purposes as disclosure-only (user has no choice, so no control is shown)
         for (const specialPurpose of specialPurposes) {
             const {
                 data,
                 count
             } = specialPurpose;
-  
+
             const purposeToggle = createPurposeToggleContainer(data, count, true, modalData, api, createMainContainer);
             appendChild(dom._pmSectionToggleContainer, purposeToggle);
         }
 
-        // Step 5: Show features as readonly (user has no choice)
+        // Step 5: Show features as disclosure-only (user has no choice, so no control is shown).
+        // Per TCF Policy v5.0.b, the standard explanation text from the GVL must be shown alongside
+        // features.
+        // It is rendered as the first line of each feature's expanded section, before the feature's own description.
         for (const feature of features) {
             const {
                 data,
                 count
             } = feature;
-  
-            const purposeToggle = createPurposeToggleContainer(data, count, true, modalData, api, createMainContainer);
+
+            const purposeToggle = createPurposeToggleContainer(data, count, true, modalData, api, createMainContainer, false, standardTexts?.features);
             appendChild(dom._pmSectionToggleContainer, purposeToggle);
         }
     }
@@ -582,6 +598,24 @@ export const createPreferencesModal = (api, createMainContainer) => {
 
     getModalFocusableData('preferences');
 };
+
+/**
+ * Creates a non-interactive "always enabled" badge, shown in place of a toggle for readonly /
+ * disclosure-only entities that carry no user
+ * choice.
+ * Used only in the TCF-compliant preferences modal.
+ *
+ * @param {string} label
+ * @returns {HTMLElement}
+ */
+function createAlwaysEnabledBadge(label) {
+    const badge = createNode(SPAN_TAG);
+
+    addClassPm(badge, 'always-enabled');
+    badge.textContent = label;
+
+    return badge;
+}
 
 /**
  * Generate toggle
@@ -714,9 +748,10 @@ function createToggleLabel(label, value, sCurrentCategoryObject, isService, cate
  * @param {import("../global").Api} api
  * @param {CreateMainContainer} createMainContainer
  * @param {boolean} isSpecialFeature
+ * @param {string | null} standardText Standard explanation text
  * @returns {HTMLElement}
  */
-function createPurposeToggleContainer(data, count, isReadonly, modalData, api, createMainContainer, isSpecialFeature = false) {
+function createPurposeToggleContainer(data, count, isReadonly, modalData, api, createMainContainer, isSpecialFeature = false, standardText = null) {
     const {
         id,
         name,
@@ -737,7 +772,8 @@ function createPurposeToggleContainer(data, count, isReadonly, modalData, api, c
         viewVendorsLabel = 'List of IAB Vendors',
         viewIllustrationsLabel = 'View Illustrations',
         purposeVendorCountLabel = '{{count}} partners can use this purpose',
-        purposeVendorCountPlaceholder = '{{count}}'
+        purposeVendorCountPlaceholder = '{{count}}',
+        alwaysEnabledLabel = 'Always Enabled'
     } = modalData;
 
     const state = globalObj._state;
@@ -755,6 +791,12 @@ function createPurposeToggleContainer(data, count, isReadonly, modalData, api, c
     addClassPm(purposeToggle, 'section--toggle');
     addClassPm(purposeToggle, 'section--expandable');
     addClassPm(purposeToggle, 'section--purpose');
+
+    // Readonly entities (features / special purposes) carry no user choice, so they are shown as
+    // disclosure-only (no toggle control) per TCF Policy v5.0.b UI requirements.
+    if (isReadonly) {
+        addClassPm(purposeToggle, 'section--disclosure');
+    }
 
     // Title container
     var purposeTitleContainer = createNode(DIV_TAG);
@@ -786,9 +828,12 @@ function createPurposeToggleContainer(data, count, isReadonly, modalData, api, c
 
     appendChild(purposeTitleContainer, purposeTitleIcon);
 
-    // Toggle
-    const toggle = createPurposeToggle(name, id, isReadonly, isSpecialFeature, isStack);
-    appendChild(purposeTitleContainer, toggle);
+    if (isReadonly) {
+        appendChild(purposeTitleBtn, createAlwaysEnabledBadge(alwaysEnabledLabel));
+    } else {
+        const toggle = createPurposeToggle(name, id, isSpecialFeature, isStack);
+        appendChild(purposeTitleContainer, toggle);
+    }
 
     var expandableDivId = `${replaceTextSpacesWithSymbol(name, '-').toLowerCase()}-desc`;
     setAttribute(purposeTitleBtn, 'aria-expanded', false);
@@ -806,6 +851,16 @@ function createPurposeToggleContainer(data, count, isReadonly, modalData, api, c
     var purposeDescription = createNode(DIV_TAG);
     addClassPm(purposeDescription, 'section-desc');
     appendChild(purposeDescriptionContainer, purposeDescription);
+
+    // Standard explanation text shown as the first line of the section, before the entity's own description.
+    if (standardText) {
+        var standardTextEl = createNode('p');
+
+        addClassPm(standardTextEl, 'feature-standard-text');
+        standardTextEl.innerHTML = standardText;
+
+        appendChild(purposeDescription, standardTextEl);
+    }
 
     var purposeDesc = createNode('p');
     purposeDesc.innerHTML = description;
@@ -924,7 +979,7 @@ function createStackPurposeToggleContainer(data, count, stackId, modalData, isSp
     appendChild(stackToggleHeader, stackTitleContainer);
 
     // Toggle
-    const toggle = createPurposeToggle(purposeName, id, false, isSpecialFeature, false, stackId);
+    const toggle = createPurposeToggle(purposeName, id, isSpecialFeature, false, stackId);
     appendChild(stackToggleHeader, toggle);
 
     // Description container
@@ -960,13 +1015,12 @@ function createStackPurposeToggleContainer(data, count, stackId, modalData, isSp
  *
  * @param {string} label Toggle label
  * @param {string} value Toggle value
- * @param {boolean} isReadonly Should toggle be disabled
  * @param {boolean} isSpecialFeature Is the toggle a special feature toggle
  * @param {boolean} isStack Is the toggle a stack toggle
  * @param {number | null} parentStackValue Parent stack toggle value
  * @returns {HTMLElement}
  */
-function createPurposeToggle(label, value, isReadonly = false, isSpecialFeature = false, isStack = false, parentStackValue = null) {
+function createPurposeToggle(label, value, isSpecialFeature = false, isStack = false, parentStackValue = null) {
     const state = globalObj._state;
     const dom = globalObj._dom;
 
@@ -1035,14 +1089,14 @@ function createPurposeToggle(label, value, isReadonly = false, isSpecialFeature 
                 stackToggle.checked = stackSpecialFeatureIds.some((id) => specialFeatureInputs[id].checked);
             }
         });
-    } else if (!isReadonly) {
+    } else {
         dom._purposeCheckboxInputs[value] = toggle;
 
         addEvent(toggle, CLICK_EVENT, () => {
             // Toggle the parent stack toggle if any child is checked and untoggle if nothing is checked
             if (parentStackValue) {
                 const stackToggle = dom._stackCheckboxInputs[parentStackValue];
-  
+
                 const stackPurposeIds = originalStacks[parentStackValue].purposes;
                 const purposeInputs = dom._purposeCheckboxInputs;
 
@@ -1073,12 +1127,6 @@ function createPurposeToggle(label, value, isReadonly = false, isSpecialFeature 
         }
     } else {
         toggle.checked = false;
-    }
-
-    // Set toggle as readonly if necessary
-    if (isReadonly) {
-        toggle.checked = true;
-        toggle.disabled = true;
     }
 
     appendChild(toggleLabel, toggle);
