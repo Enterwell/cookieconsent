@@ -111,8 +111,9 @@ export const configCmpApi = async () => {
         cmpApi = new CmpApi(cmpId, cmpVersion, true, {
             'getTCData': (next, tcData, status) => {
                 /*
-                * If using with 'removeEventListener' command, add a check to see if tcData is not a boolean. */
-                if (typeof tcData !== 'boolean') {
+                * tcData is a boolean for 'removeEventListener' and null when the
+                * command could not be fulfilled. */
+                if (tcData && typeof tcData === 'object') {
                     tcData.addtlConsent = explicitAcString;
                 }
 
@@ -121,8 +122,9 @@ export const configCmpApi = async () => {
             },
             'getInAppTCData': (next, tcData, status) => {
                 /*
-                * If using with 'removeEventListener' command, add a check to see if tcData is not a boolean. */
-                if (typeof tcData !== 'boolean') {
+                * tcData is a boolean for 'removeEventListener' and null when the
+                * command could not be fulfilled. */
+                if (tcData && typeof tcData === 'object') {
                     tcData.addtlConsent = explicitAcString;
                 }
 
